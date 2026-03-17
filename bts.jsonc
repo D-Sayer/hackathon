@@ -1,0 +1,31 @@
+// Better-T-Stack
+//
+// Website: https://www.better-t-stack.dev/
+// Stack Builder: https://www.better-t-stack.dev/new
+// Analytics: https://www.better-t-stack.dev/analytics
+// Showcase: https://www.better-t-stack.dev/showcase
+// Sponsor: https://github.com/sponsors/AmanVarshney01
+//
+// Add new addons with: bun create better-t-stack add
+// This file is safe to delete
+
+{
+  "$schema": "https://r2.better-t-stack.dev/schema.json",
+  "version": "3.25.5",
+  "createdAt": "2026-03-17T22:31:42.046Z",
+  "reproducibleCommand": "bun create better-t-stack@latest hackathon --frontend react-router --backend hono --runtime bun --database sqlite --orm drizzle --api trpc --auth better-auth --payments none --addons fumadocs turborepo --examples ai --db-setup none --web-deploy none --server-deploy none --git --package-manager bun --install",
+  "database": "sqlite",
+  "orm": "drizzle",
+  "backend": "hono",
+  "runtime": "bun",
+  "frontend": ["react-router"],
+  "addons": ["fumadocs", "turborepo"],
+  "examples": ["ai"],
+  "auth": "better-auth",
+  "payments": "none",
+  "packageManager": "bun",
+  "dbSetup": "none",
+  "api": "trpc",
+  "webDeploy": "none",
+  "serverDeploy": "none",
+}

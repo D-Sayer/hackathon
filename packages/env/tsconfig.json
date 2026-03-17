@@ -1,0 +1,3 @@
+{
+  "extends": "@hackathon/config/tsconfig.base.json"
+}

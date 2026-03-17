@@ -1,0 +1,24 @@
+{
+  "name": "@hackathon/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@hackathon/db": "workspace:*",
+    "@hackathon/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@hackathon/config": "workspace:*",
+    "typescript": "^5"
+  }
+}
