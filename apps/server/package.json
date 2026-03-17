@@ -4,9 +4,10 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "tsdown",
-    "check-types": "tsc -b",
+    "check-types": "tsc --noEmit",
     "compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
     "dev": "bun run --hot src/index.ts",
+    "replay:webhook": "powershell -ExecutionPolicy Bypass -File ./scripts/replay-github-webhook.ps1",
     "start": "bun run dist/index.mjs"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@hackathon/auth": "workspace:*",
     "@hackathon/db": "workspace:*",
     "@hackathon/env": "workspace:*",
+    "@hackathon/github-doc-agent": "workspace:*",
     "@hono/trpc-server": "^0.4.0",
     "@trpc/server": "catalog:",
     "ai": "catalog:",
