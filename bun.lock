@@ -50,6 +50,7 @@
         "@hackathon/auth": "workspace:*",
         "@hackathon/db": "workspace:*",
         "@hackathon/env": "workspace:*",
+        "@hackathon/github-doc-agent": "workspace:*",
         "@hono/trpc-server": "^0.4.0",
         "@trpc/server": "catalog:",
         "ai": "catalog:",
@@ -168,6 +169,18 @@
       "dependencies": {
         "@t3-oss/env-core": "^0.13.1",
         "dotenv": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@hackathon/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/github-doc-agent": {
+      "name": "@hackathon/github-doc-agent",
+      "version": "0.0.0",
+      "dependencies": {
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -457,6 +470,8 @@
     "@hackathon/db": ["@hackathon/db@workspace:packages/db"],
 
     "@hackathon/env": ["@hackathon/env@workspace:packages/env"],
+
+    "@hackathon/github-doc-agent": ["@hackathon/github-doc-agent@workspace:packages/github-doc-agent"],
 
     "@hackathon/ui": ["@hackathon/ui@workspace:packages/ui"],
 
