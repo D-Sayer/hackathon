@@ -85,7 +85,30 @@ interface GitHubPullRequestFileResponse {
 }
 
 function normalizePrivateKey(privateKey: string): string {
-  return privateKey.includes("\\n") ? privateKey.replace(/\\n/g, "\n") : privateKey;
+  let normalized = privateKey.trim();
+
+  if (
+    (normalized.startsWith('"') && normalized.endsWith('"')) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1);
+  }
+
+  normalized = normalized
+    .replace(/\\r\\n/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  if (
+    normalized.includes("BEGIN PRIVATE KEY") &&
+    normalized.includes("END PRIVATE KEY") &&
+    !normalized.endsWith("\n")
+  ) {
+    normalized += "\n";
+  }
+
+  return normalized;
 }
 
 function encodeBase64Url(value: string): string {

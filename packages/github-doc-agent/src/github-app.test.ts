@@ -70,6 +70,39 @@ function createMockFetch(
 }
 
 describe("github app integration", () => {
+  test("accepts quoted single-line private keys from env files", async () => {
+    const loader = createGitHubAppPullRequestContextLoader({
+      appId: "123",
+      fetch: createMockFetch([
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("POST");
+            expect(url).toContain("/app/installations/99/access_tokens");
+          },
+          response: createJsonResponse({
+            expires_at: "2099-03-18T01:00:00.000Z",
+            token: "installation-token",
+          }),
+        },
+        {
+          assert: ({ url }) => {
+            expect(url).toContain("/repos/acme/repo/pulls/42/files");
+            expect(url).toContain("page=1");
+          },
+          response: createJsonResponse([]),
+        },
+      ]),
+      privateKey: `"${privateKey.export({
+        format: "pem",
+        type: "pkcs1",
+      }).toString().replace(/\n/g, "\\n")}"`,
+    });
+
+    const context = await loader(event);
+
+    expect(context.changedFiles).toEqual([]);
+  });
+
   test("loads pull request context from GitHub App APIs", async () => {
     const loader = createGitHubAppPullRequestContextLoader({
       appId: "123",

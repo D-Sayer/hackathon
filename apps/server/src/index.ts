@@ -24,7 +24,9 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
 const app = new Hono();
-const docsAgentModel = openai(env.DOCS_AGENT_MODEL ?? "gpt-4.1-mini-2025-04-14");
+const docsAgentModel = openai(
+  env.DOCS_AGENT_MODEL ?? "gpt-4.1-mini-2025-04-14",
+);
 const docsPageLoader = createLocalDocsPageLoader({
   cwd: process.cwd(),
 });
@@ -126,10 +128,7 @@ app.post("/webhooks/github", async (c) => {
   });
 
   if (!normalization.ok) {
-    const status =
-      normalization.code === "invalid_payload"
-        ? 400
-        : 202;
+    const status = normalization.code === "invalid_payload" ? 400 : 202;
 
     console.info("[github-webhook] ignored", {
       code: normalization.code,
@@ -162,15 +161,16 @@ app.post("/webhooks/github", async (c) => {
               })
             : undefined,
         isConfigured:
-          env.GITHUB_DOC_AGENT_ENABLED &&
-          pullRequestContextLoader !== null,
+          env.GITHUB_DOC_AGENT_ENABLED && pullRequestContextLoader !== null,
         loadDocsPages: docsPageLoader,
         loadPullRequestContext: pullRequestContextLoader ?? undefined,
       },
     );
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown GitHub docs workflow error.";
+      error instanceof Error
+        ? error.message
+        : "Unknown GitHub docs workflow error.";
 
     console.error("[github-webhook] workflow-error", {
       deliveryId: normalization.event.deliveryId,
