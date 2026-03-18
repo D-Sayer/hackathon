@@ -1,89 +1,175 @@
-# hackathon
+# GitHub Doc Agent
 
-## Getting Started
+The GitHub doc agent lives in `packages/github-doc-agent` and is exposed through the server webhook route in `apps/server/src/index.ts`.
 
-First, install the dependencies:
+## What it does
+
+When the server receives a GitHub `pull_request` webhook at `POST /webhooks/github`, the agent:
+
+1. Verifies the webhook signature.
+2. Normalizes the GitHub event.
+3. Loads PR file changes from the GitHub API using a GitHub App installation.
+4. Classifies whether the PR needs documentation updates.
+5. Generates proposed MDX changes under `apps/fumadocs/content/docs`.
+6. In `live` mode, creates or updates a docs branch and opens a draft PR.
+
+## Prerequisites
+
+- `bun` 1.3.4 or later
+- dependencies installed with `bun install`
+- an `apps/server/.env` file
+- an OpenAI API key
+- a GitHub App with webhook delivery enabled if you want the full workflow
+
+## Required server environment
+
+The server validates env vars from `packages/env/src/server.ts`, so the app will not boot without the core server values below.
+
+Create `apps/server/.env` with at least:
+
+```env
+DATABASE_URL=file:../../local.db
+BETTER_AUTH_SECRET=replace-with-a-long-random-string-at-least-32-chars
+BETTER_AUTH_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:5173
+
+OPENAI_API_KEY=replace-with-your-openai-key
+
+GITHUB_DOC_AGENT_ENABLED=true
+GITHUB_DOC_AGENT_MODE=dry-run
+GITHUB_WEBHOOK_SECRET=replace-with-your-webhook-secret
+
+GITHUB_APP_ID=replace-with-your-github-app-id
+GITHUB_APP_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+
+DOCS_AGENT_MODEL=gpt-4.1-mini-2025-04-14
+```
+
+Notes:
+
+- `GITHUB_APP_PRIVATE_KEY` may be stored as a single quoted string with `\n` line breaks.
+- `GITHUB_DOC_AGENT_MODE=dry-run` is the safest local starting point. It classifies and generates docs changes, but does not write back to GitHub.
+- `GITHUB_DOC_AGENT_ENABLED` must be `true` and both `GITHUB_APP_ID` and `GITHUB_APP_PRIVATE_KEY` must be present for the workflow to be considered configured.
+- `DOCS_AGENT_DOCS_ROOT` and `DOCS_AGENT_BASE_BRANCH` have defaults, so you usually do not need to set them locally.
+- `GITHUB_REPO_OWNER` and `GITHUB_REPO_NAME` exist in the env schema but are not currently required by the runtime path.
+
+## GitHub App setup
+
+For local testing, create a GitHub App and install it on the target repo.
+
+Recommended permissions:
+
+- Pull requests: `Read & write`
+- Contents: `Read & write`
+- Metadata: `Read-only`
+
+Recommended webhook subscription:
+
+- Pull requests
+
+Use the same webhook secret from your GitHub App config as `GITHUB_WEBHOOK_SECRET` in `apps/server/.env`.
+
+## Start the server
+
+If you only want the webhook server running:
 
 ```bash
-bun install
+bun run dev:server
 ```
 
-## Database Setup
-
-This project uses SQLite with Drizzle ORM.
-
-1. Start the local SQLite database (optional):
+Useful health check:
 
 ```bash
-bun run db:local
+curl http://localhost:3000/webhooks/github/health
 ```
 
-2. Update your `.env` file in the `apps/server` directory with the appropriate connection details if needed.
+Expected response shape:
 
-3. Apply the schema to your database:
+```json
+{
+  "docsWriteTarget": "apps/fumadocs/content/docs",
+  "enabled": true,
+  "mode": "dry-run",
+  "status": "ready"
+}
+```
+
+## Replay a webhook locally
+
+The repo already includes a replay script at `apps/server/scripts/replay-github-webhook.ps1`.
+
+From the repo root, run:
 
 ```bash
-bun run db:push
+bun run --cwd apps/server replay:webhook
 ```
 
-Then, run the development server:
+That script:
 
-```bash
-bun run dev
+- loads `apps/server/.env` by default
+- uses the fixture at `packages/github-doc-agent/src/__fixtures__/pull-request-opened.json`
+- signs the payload with `GITHUB_WEBHOOK_SECRET`
+- posts the webhook to `http://localhost:3000/webhooks/github`
+
+You can override values while replaying. Example:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\apps\server\scripts\replay-github-webhook.ps1 `
+  -PrNumber 123 `
+  -Title "Add switch docs" `
+  -Owner your-org `
+  -Repo your-repo `
+  -BaseRef main `
+  -HeadRef feature/switch-docs
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+## Dry-run vs live mode
 
-## UI Customization
+`dry-run` mode:
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+- verifies the webhook
+- fetches PR context from GitHub
+- classifies the PR
+- generates proposed doc operations
+- returns the result in the webhook response
+- does not create branches or pull requests in GitHub
 
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
+`live` mode:
 
-### Add more shared components
+- does everything in `dry-run`
+- creates or reuses a docs branch
+- commits generated MDX updates
+- creates or updates a draft PR in GitHub
 
-Run this from the project root to add more primitives to the shared UI package:
+To enable live mode, change:
 
-```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
+```env
+GITHUB_DOC_AGENT_MODE=live
 ```
 
-Import shared components like this:
+Only switch to `live` after you have confirmed the dry-run response looks correct.
 
-```tsx
-import { Button } from "@hackathon/ui/components/button";
-```
+## Typical local workflow
 
-### Add app-specific blocks
+1. Run `bun install`.
+2. Fill out `apps/server/.env`.
+3. Start the server with `bun run dev:server`.
+4. Check `http://localhost:3000/webhooks/github/health`.
+5. Replay a webhook with `bun run --cwd apps/server replay:webhook`.
+6. Inspect the JSON response in the terminal.
+7. When dry-run looks good, switch `GITHUB_DOC_AGENT_MODE` to `live` and replay again.
 
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
+## Useful commands
 
-## Project Structure
+- `bun run dev:server` - run only the backend server
+- `bun run check-types` - run workspace TypeScript checks
+- `bun run test` - run workspace tests
+- `bun run --cwd apps/server replay:webhook` - send a local GitHub webhook fixture
 
-```
-hackathon/
-├── apps/
-│   ├── web/         # Frontend application (React + React Router)
-│   └── server/      # Backend API (Hono, TRPC)
-├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
-```
+## Troubleshooting
 
-## Available Scripts
-
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run db:push`: Push schema changes to database
-- `bun run db:generate`: Generate database client/types
-- `bun run db:migrate`: Run database migrations
-- `bun run db:studio`: Open database studio UI
-- `bun run db:local`: Start the local SQLite database
+- `workflow_not_configured`: usually means `GITHUB_DOC_AGENT_ENABLED` is not `true`, or GitHub App env vars are missing.
+- `webhook_secret_not_configured`: `GITHUB_WEBHOOK_SECRET` is missing from `apps/server/.env`.
+- `401` on webhook replay: the replay script and server are using different webhook secrets.
+- `503` from the workflow: the server started, but GitHub or AI configuration is incomplete for the path being exercised.
+- health endpoint shows `enabled: false`: your `.env` was not loaded or still has `GITHUB_DOC_AGENT_ENABLED=false`.
