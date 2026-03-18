@@ -17,6 +17,12 @@ import {
   runGitHubDocAgentWorkflow,
   verifyGitHubWebhookSignature,
 } from "@hackathon/github-doc-agent";
+import type { GitHubDocAgentWorkflowResult } from "@hackathon/github-doc-agent";
+import {
+  createGitHubTestingAgentWorkflowLogEntry,
+  normalizeGitHubTestingWebhookEvent,
+  runGitHubTestingAgentWorkflow,
+} from "@hackathon/github-testing-agent";
 import { trpcServer } from "@hono/trpc-server";
 import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { Hono } from "hono";
@@ -74,9 +80,15 @@ app.get("/webhooks/github", (c) => {
 app.get("/webhooks/github/health", (c) => {
   return c.json({
     docsWriteTarget: DOCS_WRITE_TARGET,
-    enabled: env.GITHUB_DOC_AGENT_ENABLED,
-    mode: env.GITHUB_DOC_AGENT_MODE,
+    docsAgent: {
+      enabled: env.GITHUB_DOC_AGENT_ENABLED,
+      mode: env.GITHUB_DOC_AGENT_MODE,
+    },
     status: "ready",
+    testingAgent: {
+      enabled: env.GITHUB_TESTING_AGENT_ENABLED,
+      mode: env.GITHUB_TESTING_AGENT_MODE,
+    },
   });
 });
 
@@ -127,43 +139,91 @@ app.post("/webhooks/github", async (c) => {
     payload,
   });
 
-  if (!normalization.ok) {
-    const status = normalization.code === "invalid_payload" ? 400 : 202;
+  const testingNormalization = normalizeGitHubTestingWebhookEvent({
+    headers,
+    payload,
+  });
 
-    console.info("[github-webhook] ignored", {
-      code: normalization.code,
+  if (!testingNormalization.ok) {
+    const status = testingNormalization.code === "invalid_payload" ? 400 : 202;
+
+    console.info("[github-webhook] testing-agent-ignored", {
+      code: testingNormalization.code,
       deliveryId: headers.deliveryId,
       eventName: headers.eventName,
     });
 
-    return c.json(normalization, status);
+    return c.json(testingNormalization, status);
   }
 
-  let workflowResult;
+  if (!normalization.ok) {
+    console.info("[github-webhook] docs-agent-ignored", {
+      code: normalization.code,
+      deliveryId: headers.deliveryId,
+      eventName: headers.eventName,
+    });
+  }
+
+  const skippedDocsWorkflowResult: GitHubDocAgentWorkflowResult = {
+    accepted: false,
+    code: "workflow_not_configured",
+    classification: {
+      changedFilesConsidered: [],
+      needsDocs: false,
+      proposedChanges: [],
+      rationale: normalization.ok
+        ? "The docs agent workflow ran normally."
+        : normalization.message,
+      source: "fallback",
+      targetPages: [],
+      wasModelSkipped: true,
+    },
+    docGeneration: null,
+    docsWriteTarget: DOCS_WRITE_TARGET,
+    message: normalization.ok
+      ? "The docs agent workflow ran normally."
+      : normalization.message,
+    sourcePrNumber: testingNormalization.event.pullRequest.number,
+    writeback: null,
+  };
+
+  let docsWorkflowResult: GitHubDocAgentWorkflowResult = skippedDocsWorkflowResult;
+  let testingWorkflowResult;
 
   try {
-    workflowResult = await runGitHubDocAgentWorkflow(
+    docsWorkflowResult = normalization.ok
+      ? await runGitHubDocAgentWorkflow(
+          {
+            event: normalization.event,
+            mode: env.GITHUB_DOC_AGENT_MODE,
+          },
+          {
+            classifier: pullRequestClassifier,
+            docWriter: pullRequestDocWriter,
+            githubWritebackClient:
+              normalization.event.installationId !== null &&
+              env.GITHUB_APP_ID &&
+              env.GITHUB_APP_PRIVATE_KEY
+                ? createGitHubAppDocsWritebackClient({
+                    appId: env.GITHUB_APP_ID,
+                    installationId: normalization.event.installationId,
+                    privateKey: env.GITHUB_APP_PRIVATE_KEY,
+                  })
+                : undefined,
+            isConfigured:
+              env.GITHUB_DOC_AGENT_ENABLED && pullRequestContextLoader !== null,
+            loadDocsPages: docsPageLoader,
+            loadPullRequestContext: pullRequestContextLoader ?? undefined,
+          },
+        )
+      : skippedDocsWorkflowResult;
+    testingWorkflowResult = await runGitHubTestingAgentWorkflow(
       {
-        event: normalization.event,
-        mode: env.GITHUB_DOC_AGENT_MODE,
+        event: testingNormalization.event,
+        mode: env.GITHUB_TESTING_AGENT_MODE,
       },
       {
-        classifier: pullRequestClassifier,
-        docWriter: pullRequestDocWriter,
-        githubWritebackClient:
-          normalization.event.installationId !== null &&
-          env.GITHUB_APP_ID &&
-          env.GITHUB_APP_PRIVATE_KEY
-            ? createGitHubAppDocsWritebackClient({
-                appId: env.GITHUB_APP_ID,
-                installationId: normalization.event.installationId,
-                privateKey: env.GITHUB_APP_PRIVATE_KEY,
-              })
-            : undefined,
-        isConfigured:
-          env.GITHUB_DOC_AGENT_ENABLED && pullRequestContextLoader !== null,
-        loadDocsPages: docsPageLoader,
-        loadPullRequestContext: pullRequestContextLoader ?? undefined,
+        isConfigured: env.GITHUB_TESTING_AGENT_ENABLED,
       },
     );
   } catch (error) {
@@ -173,9 +233,9 @@ app.post("/webhooks/github", async (c) => {
         : "Unknown GitHub docs workflow error.";
 
     console.error("[github-webhook] workflow-error", {
-      deliveryId: normalization.event.deliveryId,
+      deliveryId: testingNormalization.event.deliveryId,
       message,
-      sourcePrNumber: normalization.event.pullRequest.number,
+      sourcePrNumber: testingNormalization.event.pullRequest.number,
     });
 
     return c.json(
@@ -187,22 +247,35 @@ app.post("/webhooks/github", async (c) => {
     );
   }
 
-  const status = workflowResult.accepted ? 202 : 503;
+  const status =
+    docsWorkflowResult.accepted || testingWorkflowResult.accepted ? 202 : 503;
+
+  if (normalization.ok) {
+    console.info(
+      "[github-webhook] docs-workflow",
+      createGitHubDocAgentWorkflowLogEntry({
+        event: normalization.event,
+        mode: env.GITHUB_DOC_AGENT_MODE,
+        result: docsWorkflowResult,
+      }),
+    );
+  }
 
   console.info(
-    "[github-webhook] workflow",
-    createGitHubDocAgentWorkflowLogEntry({
-      event: normalization.event,
-      mode: env.GITHUB_DOC_AGENT_MODE,
-      result: workflowResult,
+    "[github-webhook] testing-workflow",
+    createGitHubTestingAgentWorkflowLogEntry({
+      event: testingNormalization.event,
+      mode: env.GITHUB_TESTING_AGENT_MODE,
+      result: testingWorkflowResult,
     }),
   );
 
   return c.json(
     {
-      ...workflowResult,
-      deliveryId: normalization.event.deliveryId,
-      eventName: normalization.event.eventName,
+      deliveryId: testingNormalization.event.deliveryId,
+      docsAgent: docsWorkflowResult,
+      eventName: testingNormalization.event.eventName,
+      testingAgent: testingWorkflowResult,
     },
     status,
   );

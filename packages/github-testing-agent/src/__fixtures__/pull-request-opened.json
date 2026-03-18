@@ -1,0 +1,33 @@
+{
+  "action": "opened",
+  "installation": {
+    "id": 123456
+  },
+  "pull_request": {
+    "body": "This PR adds the first testing agent intake slice.",
+    "base": {
+      "ref": "main"
+    },
+    "draft": false,
+    "head": {
+      "ref": "feature/testing-agent-intake"
+    },
+    "html_url": "https://github.com/acme/repo/pull/42",
+    "number": 42,
+    "title": "Add testing agent webhook intake",
+    "user": {
+      "login": "octocat"
+    }
+  },
+  "repository": {
+    "default_branch": "main",
+    "full_name": "acme/repo",
+    "name": "repo",
+    "owner": {
+      "login": "acme"
+    }
+  },
+  "sender": {
+    "login": "octocat"
+  }
+}

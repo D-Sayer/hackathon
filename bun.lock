@@ -53,6 +53,7 @@
         "@hackathon/db": "workspace:*",
         "@hackathon/env": "workspace:*",
         "@hackathon/github-doc-agent": "workspace:*",
+        "@hackathon/github-testing-agent": "workspace:*",
         "@hono/trpc-server": "^0.4.0",
         "@trpc/server": "catalog:",
         "ai": "catalog:",
@@ -198,6 +199,18 @@
       "version": "0.0.0",
       "dependencies": {
         "ai": "catalog:",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@hackathon/config": "workspace:*",
+        "@types/bun": "catalog:",
+        "typescript": "^5",
+      },
+    },
+    "packages/github-testing-agent": {
+      "name": "@hackathon/github-testing-agent",
+      "version": "0.0.0",
+      "dependencies": {
         "zod": "catalog:",
       },
       "devDependencies": {
@@ -492,6 +505,8 @@
     "@hackathon/env": ["@hackathon/env@workspace:packages/env"],
 
     "@hackathon/github-doc-agent": ["@hackathon/github-doc-agent@workspace:packages/github-doc-agent"],
+
+    "@hackathon/github-testing-agent": ["@hackathon/github-testing-agent@workspace:packages/github-testing-agent"],
 
     "@hackathon/ui": ["@hackathon/ui@workspace:packages/ui"],
 
