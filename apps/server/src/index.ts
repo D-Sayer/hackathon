@@ -43,6 +43,23 @@ app.use(
   }),
 );
 
+app.use("/ai", async (c, next) => {
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+
+  if (!session) {
+    return c.json(
+      {
+        message: "Authentication required",
+      },
+      401,
+    );
+  }
+
+  await next();
+});
+
 app.post("/ai", async (c) => {
   const body = await c.req.json();
   const uiMessages = body.messages || [];
