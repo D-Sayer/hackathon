@@ -3,8 +3,10 @@ import {
   evaluatePullRequestHeuristics,
 } from "./classify-pr";
 import { generatePullRequestDocs } from "./generate-docs";
+import { runGitHubDocsWriteback } from "./writeback";
 import type {
   DocsPageLoader,
+  GitHubDocsWritebackClient,
   GitHubDocAgentWorkflowInput,
   GitHubDocAgentWorkflowResult,
   PullRequestDocWriter,
@@ -18,6 +20,7 @@ export interface GitHubDocAgentWorkflowDependencies {
   isConfigured?: boolean;
   classifier?: PullRequestClassifier;
   docWriter?: PullRequestDocWriter;
+  githubWritebackClient?: GitHubDocsWritebackClient;
   loadDocsPages?: DocsPageLoader;
   loadPullRequestContext?: PullRequestContextLoader;
 }
@@ -27,6 +30,7 @@ function buildWorkflowMessage(params: {
   generatedOperationCount: number;
   mode: "dry-run" | "live";
   source: PullRequestClassificationSource;
+  writeback?: GitHubDocAgentWorkflowResult["writeback"];
 }): string {
   const prefix =
     params.mode === "live"
@@ -42,7 +46,14 @@ function buildWorkflowMessage(params: {
       ? ` Planned ${params.generatedOperationCount} documentation file operation${params.generatedOperationCount === 1 ? "" : "s"}.`
       : "";
 
-  return `${prefix} ${decision} Decision source: ${params.source}.${generation}`;
+  const writeback =
+    params.mode === "live" && params.writeback
+      ? params.writeback.status === "no_changes"
+        ? ` No docs branch update was needed on ${params.writeback.branchName}.`
+        : ` Draft PR ${params.writeback.pullRequest?.action ?? "updated"} for branch ${params.writeback.branchName}.`
+      : "";
+
+  return `${prefix} ${decision} Decision source: ${params.source}.${generation}${writeback}`;
 }
 
 export async function runGitHubDocAgentWorkflow(
@@ -70,6 +81,7 @@ export async function runGitHubDocAgentWorkflow(
       message:
         "The docs agent architecture is wired, but GitHub integration is not configured yet.",
       sourcePrNumber: input.event.pullRequest.number,
+      writeback: null,
     };
   }
 
@@ -92,6 +104,7 @@ export async function runGitHubDocAgentWorkflow(
       message:
         "The docs agent workflow needs a PR context loader before classification can run.",
       sourcePrNumber: input.event.pullRequest.number,
+      writeback: null,
     };
   }
 
@@ -159,8 +172,76 @@ export async function runGitHubDocAgentWorkflow(
         docsWriteTarget: DOCS_WRITE_TARGET,
         message: `Documentation generation failed after classification: ${message}`,
         sourcePrNumber: input.event.pullRequest.number,
+        writeback: null,
       };
     }
+  }
+
+  let writeback: GitHubDocAgentWorkflowResult["writeback"] = null;
+  const generatedOperations = docGeneration?.operations ?? [];
+
+  if (
+    mode === "live" &&
+    classification.needsDocs &&
+    generatedOperations.length > 0
+  ) {
+    if (!dependencies.githubWritebackClient) {
+      return {
+        accepted: false,
+        code: "workflow_not_configured",
+        classification: {
+          ...classification,
+          changedFilesConsidered: heuristicEvaluation.changedFilesConsidered,
+          source,
+          wasModelSkipped,
+        },
+        docGeneration,
+        docsWriteTarget: DOCS_WRITE_TARGET,
+        message:
+          "Live docs writeback is not configured because no GitHub writeback client is available.",
+        sourcePrNumber: input.event.pullRequest.number,
+        writeback: null,
+      };
+    }
+
+    const writebackResult = await runGitHubDocsWriteback(
+      {
+        event: input.event,
+        operations: generatedOperations,
+      },
+      dependencies.githubWritebackClient,
+    );
+
+    if (!writebackResult.ok) {
+      return {
+        accepted: false,
+        code: "writeback_failed",
+        classification: {
+          ...classification,
+          changedFilesConsidered: heuristicEvaluation.changedFilesConsidered,
+          source,
+          wasModelSkipped,
+        },
+        docGeneration,
+        docsWriteTarget: DOCS_WRITE_TARGET,
+        message: writebackResult.error.message,
+        sourcePrNumber: input.event.pullRequest.number,
+        writeback: {
+          baseBranch: writebackResult.error.writeback.baseBranch,
+          branchCreated: writebackResult.error.writeback.branchCreated ?? false,
+          branchName: writebackResult.error.writeback.branchName,
+          commitCreated: writebackResult.error.writeback.commitCreated ?? false,
+          commitMessage:
+            writebackResult.error.writeback.commitMessage ??
+            `docs: update documentation for #${input.event.pullRequest.number}`,
+          commitSha: writebackResult.error.writeback.commitSha ?? null,
+          pullRequest: null,
+          status: "no_changes",
+        },
+      };
+    }
+
+    writeback = writebackResult.writeback;
   }
 
   const code =
@@ -186,7 +267,9 @@ export async function runGitHubDocAgentWorkflow(
       generatedOperationCount: docGeneration?.operations.length ?? 0,
       mode,
       source,
+      writeback,
     }),
     sourcePrNumber: input.event.pullRequest.number,
+    writeback,
   };
 }

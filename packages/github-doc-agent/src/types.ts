@@ -140,6 +140,94 @@ export interface GeneratedDocsResult {
   targets: DocsPageTarget[];
 }
 
+export interface GitHubDocsBranchReference {
+  name: string;
+  sha: string;
+}
+
+export interface GitHubDocsPullRequestReference {
+  baseBranch: string;
+  body: string;
+  headBranch: string;
+  htmlUrl: string;
+  isDraft: boolean;
+  number: number;
+  title: string;
+}
+
+export interface GitHubDocsCommitChangesResult {
+  commitSha: string | null;
+  contentChanged: boolean;
+}
+
+export interface GitHubDocsWritebackSummary {
+  baseBranch: string;
+  branchCreated: boolean;
+  branchName: string;
+  commitCreated: boolean;
+  commitMessage: string;
+  commitSha: string | null;
+  pullRequest:
+    | null
+    | {
+        action: "created" | "updated";
+        body: string;
+        htmlUrl: string;
+        number: number;
+        title: string;
+      };
+  status: "no_changes" | "pull_request_created" | "pull_request_updated";
+}
+
+export interface GitHubDocsWritebackFailure {
+  message: string;
+  stage: "branch" | "commit" | "pull_request";
+  writeback: Pick<GitHubDocsWritebackSummary, "baseBranch" | "branchName"> &
+    Partial<GitHubDocsWritebackSummary>;
+}
+
+export interface GitHubDocsWritebackInput {
+  event: NormalizedPullRequestWebhookEvent;
+  operations: GeneratedDocFileOperation[];
+}
+
+export interface GitHubDocsWritebackClient {
+  commitDocsChanges(input: {
+    branchName: string;
+    commitMessage: string;
+    operations: GeneratedDocFileOperation[];
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+  }): Promise<GitHubDocsCommitChangesResult>;
+  createBranch(input: {
+    branchName: string;
+    fromBranch: string;
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+  }): Promise<GitHubDocsBranchReference>;
+  createDraftPullRequest(input: {
+    baseBranch: string;
+    body: string;
+    branchName: string;
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+    title: string;
+  }): Promise<GitHubDocsPullRequestReference>;
+  findOpenPullRequest(input: {
+    baseBranch: string;
+    branchName: string;
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+  }): Promise<GitHubDocsPullRequestReference | null>;
+  getBranch(input: {
+    branchName: string;
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+  }): Promise<GitHubDocsBranchReference | null>;
+  updatePullRequest(input: {
+    baseBranch: string;
+    body: string;
+    pullRequestNumber: number;
+    repository: NormalizedPullRequestWebhookEvent["repository"];
+    title: string;
+  }): Promise<GitHubDocsPullRequestReference>;
+}
+
 export type PullRequestClassificationSource =
   | "heuristic"
   | "model"
@@ -194,6 +282,7 @@ export interface GitHubDocAgentWorkflowResult {
     | "classified_no_docs"
     | "doc_generation_failed"
     | "dry_run"
+    | "writeback_failed"
     | "workflow_not_configured"
     | "unsupported_action"
     | "unsupported_event";
@@ -206,4 +295,5 @@ export interface GitHubDocAgentWorkflowResult {
   docsWriteTarget: DocsWriteTarget;
   message: string;
   sourcePrNumber: number;
+  writeback: GitHubDocsWritebackSummary | null;
 }

@@ -8,6 +8,10 @@ export {
   evaluatePullRequestHeuristics,
 } from "./classify-pr";
 export {
+  createGitHubAppDocsWritebackClient,
+  createGitHubAppPullRequestContextLoader,
+} from "./github-app";
+export {
   createAiPullRequestDocWriter,
   createDeterministicPullRequestDocWriter,
   createLocalDocsPageLoader,
@@ -18,6 +22,10 @@ export {
   readGitHubWebhookHeaders,
   verifyGitHubWebhookSignature,
 } from "./normalize-webhook";
+export {
+  createDocsWritebackMetadata,
+  runGitHubDocsWriteback,
+} from "./writeback";
 export { runGitHubDocAgentWorkflow } from "./workflow";
 export type {
   DocsPageLoader,
@@ -28,6 +36,13 @@ export type {
   GeneratedDocsResult,
   GitHubDocAgentWorkflowInput,
   GitHubDocAgentWorkflowResult,
+  GitHubDocsBranchReference,
+  GitHubDocsCommitChangesResult,
+  GitHubDocsPullRequestReference,
+  GitHubDocsWritebackClient,
+  GitHubDocsWritebackFailure,
+  GitHubDocsWritebackInput,
+  GitHubDocsWritebackSummary,
   GitHubWebhookHeaders,
   GitHubWebhookNormalizationResult,
   GitHubWebhookSignatureVerificationResult,
