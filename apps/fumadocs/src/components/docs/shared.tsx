@@ -135,7 +135,7 @@ function Guidance({ title, children }: { title: string; children: ReactNode }) {
 
 function ComponentGrid() {
   return (
-    <div className="my-8 grid gap-4 md:grid-cols-2">
+    <div className="my-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <LinkCard
         href="/docs/button"
         eyebrow="Component"
@@ -147,6 +147,18 @@ function ComponentGrid() {
         eyebrow="Component"
         title="Card"
         description="Composition, slot anatomy, sizing, and layout patterns for grouped content."
+      />
+      <LinkCard
+        href="/docs/input"
+        eyebrow="Component"
+        title="Input"
+        description="Single-line text entry with shared validation and focus styling."
+      />
+      <LinkCard
+        href="/docs/dropdown-menu"
+        eyebrow="Component"
+        title="Dropdown Menu"
+        description="Compact action menus, nested submenus, and stateful menu items."
       />
     </div>
   );

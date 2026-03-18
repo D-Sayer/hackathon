@@ -1,0 +1,35 @@
+---
+title: Field
+description: Form field grouping, labels, descriptions, separators, and validation state.
+---
+
+`Field` provides a structured wrapper for labeled form controls. It is designed to keep labels, helper text, and validation messages aligned without inventing ad hoc spacing in each form.
+
+## When to use it
+
+- Use it whenever a field needs a label, description, or validation state.
+- Use `FieldGroup` and `FieldSet` for related controls that belong to one question.
+- Use `FieldSeparator` when you need to visually break a long or nested field group.
+
+<FieldDemo />
+
+## Slots
+
+<FieldSlotsTable />
+
+## API
+
+<FieldApiTable />
+
+## Usage guidance
+
+### Layout
+
+- Keep the label and description close to the control.
+- Use the responsive orientation when the layout changes across breakpoints.
+- Prefer the field helpers before adding custom margins or wrapper divs.
+
+### Errors
+
+- Surface validation errors in `FieldError` so the styling stays consistent.
+- When multiple validation messages matter, show them as a list rather than a single sentence.

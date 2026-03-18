@@ -1,0 +1,31 @@
+---
+title: Button Group
+description: Horizontal and vertical action grouping for related controls.
+---
+
+`ButtonGroup` keeps adjacent actions visually tied together while preserving the button APIs you already know. It is most useful for split actions, toolbars, and compact control clusters.
+
+## When to use it
+
+- Group controls that operate on the same object or area.
+- Use `orientation="vertical"` only when the layout benefits from a stacked treatment.
+- Keep the group narrow enough that the relationship between actions remains obvious.
+
+<ButtonGroupDemo />
+
+## API
+
+<ButtonGroupApiTable />
+
+## Usage guidance
+
+### Composition
+
+- Put buttons, button-like render targets, or a select trigger inside the group.
+- Use `ButtonGroupText` when you need a non-interactive label or prefix.
+- Use `ButtonGroupSeparator` to visually split a text segment from an action.
+
+### Accessibility
+
+- Treat the group as a visual and semantic collection, not a new interaction model.
+- Keep button labels specific enough that the grouping still makes sense out of context.

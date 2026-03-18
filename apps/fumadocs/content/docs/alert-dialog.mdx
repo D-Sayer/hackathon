@@ -1,0 +1,41 @@
+---
+title: Alert Dialog
+description: Modal confirmation patterns, slots, and destructive action guidance.
+---
+
+The `AlertDialog` family wraps the Base UI alert dialog primitives with the same slot-driven pattern used throughout this design system. Use it whenever the user needs to confirm a risky or irreversible action.
+
+## When to use it
+
+- Use it for destructive actions, permission prompts, and confirmation steps.
+- Keep the copy short and explicit so the user understands the consequence before acting.
+- Prefer `AlertDialogAction` for the confirm path and `AlertDialogCancel` for the safe exit.
+
+<AlertDialogDemo />
+
+## Slots
+
+<AlertDialogSlotsTable />
+
+<Guidance title="Confirmation copy">
+  The title should name the action, not just the object. "Delete this account?"
+  is clearer than "Are you sure?" because it tells the user what will happen.
+</Guidance>
+
+## API
+
+<AlertDialogApiTable />
+
+## Usage guidance
+
+### Focus and dismissal
+
+- Let the dialog manage initial focus and keyboard dismissal.
+- Keep the cancel action visible and easy to reach.
+- Reserve alert dialogs for decisions that truly interrupt the flow.
+
+### Destructive actions
+
+- Put the destructive action on the right in left-to-right layouts.
+- Use `variant="destructive"` for actions that cannot be undone.
+- Avoid adding extra choices that dilute the confirmation moment.

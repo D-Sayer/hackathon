@@ -1,4 +1,25 @@
 {
   "title": "Docs",
-  "pages": ["index", "button", "card"]
+  "pages": [
+    "index",
+    "button",
+    "card",
+    "alert-dialog",
+    "badge",
+    "button-group",
+    "checkbox",
+    "dropdown-menu",
+    "field",
+    "input",
+    "input-group",
+    "item",
+    "label",
+    "radio-group",
+    "separator",
+    "skeleton",
+    "slider",
+    "switch",
+    "textarea",
+    "toaster"
+  ]
 }

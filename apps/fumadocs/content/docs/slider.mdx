@@ -1,0 +1,24 @@
+---
+title: Slider
+description: Single-value and range sliders for bounded numeric input.
+---
+
+`Slider` handles bounded numeric input where dragging is faster than typing. The wrapper supports both single-thumb and multi-thumb values while keeping the Base UI behavior intact.
+
+## When to use it
+
+- Use it for ranges, volume, opacity, and other bounded numeric controls.
+- Keep the scale understandable and show the current value nearby when precision matters.
+- Prefer a text input when the user needs to type an exact value.
+
+<SliderDemo />
+
+## API
+
+<SliderApiTable />
+
+## Usage guidance
+
+- Make sure the minimum and maximum values are easy to infer.
+- Always provide an accessible label.
+- Show the live value somewhere near the slider when the number matters to the user.
