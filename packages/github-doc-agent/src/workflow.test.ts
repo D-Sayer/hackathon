@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   DOCS_WRITE_TARGET,
+  generatePullRequestDocs,
   evaluatePullRequestHeuristics,
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
@@ -21,6 +22,13 @@ import {
 const payload = pullRequestOpenedPayload;
 const payloadText = JSON.stringify(payload);
 const webhookSecret = "super-secret";
+const docsIndexPage = `---
+title: Hello World
+description: Your first document
+---
+
+Welcome to the docs!
+`;
 
 function signWebhook(body: string, secret: string): string {
   return `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
@@ -177,6 +185,7 @@ describe("github doc agent workflow", () => {
 
     expect(result.accepted).toBe(false);
     expect(result.code).toBe("workflow_not_configured");
+    expect(result.docGeneration).toBeNull();
     expect(result.docsWriteTarget).toBe(DOCS_WRITE_TARGET);
     expect(result.sourcePrNumber).toBe(42);
   });
@@ -238,6 +247,12 @@ describe("github doc agent workflow", () => {
           rationale: "The PR adds a user-facing dashboard filtering feature.",
           targetPages: ["dashboard"],
         }),
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
         loadPullRequestContext: async () => webFeatureClassificationFixture,
       },
     );
@@ -245,6 +260,11 @@ describe("github doc agent workflow", () => {
     expect(result.accepted).toBe(true);
     expect(result.code).toBe("dry_run");
     expect(result.classification.needsDocs).toBe(true);
+    expect(result.docGeneration?.operations).toHaveLength(1);
+    expect(result.docGeneration?.operations[0]).toMatchObject({
+      path: "apps/fumadocs/content/docs/dashboard.mdx",
+      type: "create",
+    });
     expect(result.classification.source).toBe("model");
     expect(result.classification.targetPages).toEqual(["dashboard"]);
   });
@@ -274,11 +294,24 @@ describe("github doc agent workflow", () => {
           rationale: "The PR changes server behavior and API surface area.",
           targetPages: ["api/webhooks"],
         }),
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
         loadPullRequestContext: async () => apiChangeClassificationFixture,
       },
     );
 
     expect(result.classification.needsDocs).toBe(true);
+    if (!result.docGeneration?.operations[0]) {
+      throw new Error("Expected a generated doc operation for the API change.");
+    }
+
+    expect(result.docGeneration.operations[0].path).toBe(
+      "apps/fumadocs/content/docs/api/webhooks.mdx",
+    );
     expect(result.classification.targetPages).toEqual(["api/webhooks"]);
     expect(result.classification.source).toBe("model");
   });
@@ -310,11 +343,24 @@ describe("github doc agent workflow", () => {
           rationale: "The PR adds configuration that operators need to set up.",
           targetPages: ["setup/github-doc-agent"],
         }),
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
         loadPullRequestContext: async () => configChangeClassificationFixture,
       },
     );
 
     expect(result.classification.needsDocs).toBe(true);
+    if (!result.docGeneration?.operations[0]) {
+      throw new Error("Expected a generated doc operation for the config change.");
+    }
+
+    expect(result.docGeneration.operations[0].path).toBe(
+      "apps/fumadocs/content/docs/setup/github-doc-agent.mdx",
+    );
     expect(result.classification.targetPages).toEqual([
       "setup/github-doc-agent",
     ]);
@@ -357,7 +403,305 @@ describe("github doc agent workflow", () => {
 
     expect(classifierCalled).toBe(false);
     expect(result.classification.needsDocs).toBe(false);
+    expect(result.docGeneration).toBeNull();
     expect(result.classification.source).toBe("heuristic");
     expect(result.classification.wasModelSkipped).toBe(true);
+  });
+
+  test("updates an existing page when a target page already exists", async () => {
+    const result = await generatePullRequestDocs(
+      {
+        classification: {
+          needsDocs: true,
+          proposedChanges: [
+            "Document the dashboard quick filters for end users.",
+          ],
+          rationale: "The dashboard now exposes quick filters in the UI.",
+          targetPages: ["index"],
+        },
+        context: webFeatureClassificationFixture,
+        event: {
+          action: "opened",
+          deliveryId: "delivery-update-page",
+          eventName: "pull_request",
+          installationId: null,
+          pullRequest: {
+            author: "octocat",
+            baseRef: "main",
+            body: payload.pull_request.body,
+            draft: false,
+            headRef: "feature/dashboard-filters",
+            htmlUrl: payload.pull_request.html_url,
+            number: 42,
+            title: "Add dashboard quick filters",
+          },
+          receivedAt: "2026-03-18T00:00:00.000Z",
+          repository: {
+            defaultBranch: "main",
+            fullName: "acme/repo",
+            name: "repo",
+            owner: "acme",
+          },
+          sender: {
+            login: "octocat",
+          },
+        },
+      },
+      {
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
+      },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    const updateOperation = result.operations[0];
+
+    if (!updateOperation) {
+      throw new Error("Expected an update operation.");
+    }
+
+    expect(updateOperation.type).toBe("update");
+    expect(updateOperation.path).toBe(
+      "apps/fumadocs/content/docs/index.mdx",
+    );
+    expect(updateOperation.content).toContain("title: Hello World");
+    expect(updateOperation.content).toContain(
+      "## PR #42 Documentation Update",
+    );
+    expect(result.patchSummary[0]).toContain(
+      "Update apps/fumadocs/content/docs/index.mdx",
+    );
+  });
+
+  test("creates a new page when no suitable target page exists", async () => {
+    const result = await generatePullRequestDocs(
+      {
+        classification: {
+          needsDocs: true,
+          proposedChanges: [
+            "Add setup guidance for GitHub docs agent environment variables.",
+          ],
+          rationale: "Operators need to configure new environment variables.",
+          targetPages: ["setup/github-doc-agent"],
+        },
+        context: configChangeClassificationFixture,
+        event: {
+          action: "opened",
+          deliveryId: "delivery-create-page",
+          eventName: "pull_request",
+          installationId: null,
+          pullRequest: {
+            author: "octocat",
+            baseRef: "main",
+            body: payload.pull_request.body,
+            draft: false,
+            headRef: "feature/docs-agent-config",
+            htmlUrl: payload.pull_request.html_url,
+            number: 42,
+            title: "Add GitHub docs agent setup env vars",
+          },
+          receivedAt: "2026-03-18T00:00:00.000Z",
+          repository: {
+            defaultBranch: "main",
+            fullName: "acme/repo",
+            name: "repo",
+            owner: "acme",
+          },
+          sender: {
+            login: "octocat",
+          },
+        },
+      },
+      {
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
+      },
+    );
+
+    expect(result.operations).toHaveLength(1);
+    const createOperation = result.operations[0];
+
+    if (!createOperation) {
+      throw new Error("Expected a create operation.");
+    }
+
+    expect(createOperation).toMatchObject({
+      path: "apps/fumadocs/content/docs/setup/github-doc-agent.mdx",
+      type: "create",
+    });
+    expect(createOperation.content).toContain('title: "Github Doc Agent"');
+    expect(createOperation.content).toContain("## Overview");
+  });
+
+  test("rejects an out-of-scope path from the doc writer", async () => {
+    await expect(
+      generatePullRequestDocs(
+        {
+          classification: {
+            needsDocs: true,
+            proposedChanges: ["Document the dashboard filter workflow."],
+            rationale: "The dashboard gained a user-facing filter workflow.",
+            targetPages: ["dashboard"],
+          },
+          context: webFeatureClassificationFixture,
+          event: {
+            action: "opened",
+            deliveryId: "delivery-reject-path",
+            eventName: "pull_request",
+            installationId: null,
+            pullRequest: {
+              author: "octocat",
+              baseRef: "main",
+              body: payload.pull_request.body,
+              draft: false,
+              headRef: "feature/dashboard-filters",
+              htmlUrl: payload.pull_request.html_url,
+              number: 42,
+              title: "Add dashboard quick filters",
+            },
+            receivedAt: "2026-03-18T00:00:00.000Z",
+            repository: {
+              defaultBranch: "main",
+              fullName: "acme/repo",
+              name: "repo",
+              owner: "acme",
+            },
+            sender: {
+              login: "octocat",
+            },
+          },
+        },
+        {
+          loadDocsPages: async () => [],
+          writer: async () => [
+            {
+              content: "Unsafe path content",
+              description: "Unsafe path content",
+              path: "../outside.mdx",
+              title: "Unsafe",
+            },
+          ],
+        },
+      ),
+    ).rejects.toThrow("outside the allowed docs root");
+  });
+
+  test("rejects non-mdx file output from the doc writer", async () => {
+    await expect(
+      generatePullRequestDocs(
+        {
+          classification: {
+            needsDocs: true,
+            proposedChanges: [
+              "Add setup guidance for GitHub docs agent environment variables.",
+            ],
+            rationale: "Operators need to configure new environment variables.",
+            targetPages: ["setup/github-doc-agent"],
+          },
+          context: configChangeClassificationFixture,
+          event: {
+            action: "opened",
+            deliveryId: "delivery-reject-type",
+            eventName: "pull_request",
+            installationId: null,
+            pullRequest: {
+              author: "octocat",
+              baseRef: "main",
+              body: payload.pull_request.body,
+              draft: false,
+              headRef: "feature/docs-agent-config",
+              htmlUrl: payload.pull_request.html_url,
+              number: 42,
+              title: "Add GitHub docs agent setup env vars",
+            },
+            receivedAt: "2026-03-18T00:00:00.000Z",
+            repository: {
+              defaultBranch: "main",
+              fullName: "acme/repo",
+              name: "repo",
+              owner: "acme",
+            },
+            sender: {
+              login: "octocat",
+            },
+          },
+        },
+        {
+          loadDocsPages: async () => [],
+          writer: async () => [
+            {
+              content: "Wrong extension",
+              description: "Wrong extension",
+              path: "setup/github-doc-agent.txt",
+              title: "Github Doc Agent",
+            },
+          ],
+        },
+      ),
+    ).rejects.toThrow("must use an .mdx extension");
+  });
+
+  test("validates generated content is shaped for MDX docs usage", async () => {
+    const result = await generatePullRequestDocs(
+      {
+        classification: {
+          needsDocs: true,
+          proposedChanges: [
+            "Add setup guidance for GitHub docs agent environment variables.",
+          ],
+          rationale: "Operators need to configure new environment variables.",
+          targetPages: ["setup/github-doc-agent"],
+        },
+        context: configChangeClassificationFixture,
+        event: {
+          action: "opened",
+          deliveryId: "delivery-mdx-shape",
+          eventName: "pull_request",
+          installationId: null,
+          pullRequest: {
+            author: "octocat",
+            baseRef: "main",
+            body: payload.pull_request.body,
+            draft: false,
+            headRef: "feature/docs-agent-config",
+            htmlUrl: payload.pull_request.html_url,
+            number: 42,
+            title: "Add GitHub docs agent setup env vars",
+          },
+          receivedAt: "2026-03-18T00:00:00.000Z",
+          repository: {
+            defaultBranch: "main",
+            fullName: "acme/repo",
+            name: "repo",
+            owner: "acme",
+          },
+          sender: {
+            login: "octocat",
+          },
+        },
+      },
+      {
+        loadDocsPages: async () => [],
+      },
+    );
+
+    const generatedOperation = result.operations[0];
+
+    if (!generatedOperation) {
+      throw new Error("Expected generated MDX content.");
+    }
+
+    expect(generatedOperation.content).toMatch(/^---\n[\s\S]*\n---\n\n## Overview/m);
+    expect(generatedOperation.content).toContain(
+      "## Source Pull Request",
+    );
   });
 });

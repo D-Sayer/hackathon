@@ -2,9 +2,12 @@ import { DOCS_WRITE_TARGET } from "./constants";
 import {
   evaluatePullRequestHeuristics,
 } from "./classify-pr";
+import { generatePullRequestDocs } from "./generate-docs";
 import type {
+  DocsPageLoader,
   GitHubDocAgentWorkflowInput,
   GitHubDocAgentWorkflowResult,
+  PullRequestDocWriter,
   PullRequestClassification,
   PullRequestClassificationSource,
   PullRequestClassifier,
@@ -14,11 +17,14 @@ import type {
 export interface GitHubDocAgentWorkflowDependencies {
   isConfigured?: boolean;
   classifier?: PullRequestClassifier;
+  docWriter?: PullRequestDocWriter;
+  loadDocsPages?: DocsPageLoader;
   loadPullRequestContext?: PullRequestContextLoader;
 }
 
 function buildWorkflowMessage(params: {
   classification: PullRequestClassification;
+  generatedOperationCount: number;
   mode: "dry-run" | "live";
   source: PullRequestClassificationSource;
 }): string {
@@ -31,7 +37,12 @@ function buildWorkflowMessage(params: {
     ? "Documentation updates are required."
     : "No documentation updates are required.";
 
-  return `${prefix} ${decision} Decision source: ${params.source}.`;
+  const generation =
+    params.generatedOperationCount > 0
+      ? ` Planned ${params.generatedOperationCount} documentation file operation${params.generatedOperationCount === 1 ? "" : "s"}.`
+      : "";
+
+  return `${prefix} ${decision} Decision source: ${params.source}.${generation}`;
 }
 
 export async function runGitHubDocAgentWorkflow(
@@ -54,6 +65,7 @@ export async function runGitHubDocAgentWorkflow(
         targetPages: [],
         wasModelSkipped: true,
       },
+      docGeneration: null,
       docsWriteTarget: DOCS_WRITE_TARGET,
       message:
         "The docs agent architecture is wired, but GitHub integration is not configured yet.",
@@ -75,6 +87,7 @@ export async function runGitHubDocAgentWorkflow(
         targetPages: [],
         wasModelSkipped: true,
       },
+      docGeneration: null,
       docsWriteTarget: DOCS_WRITE_TARGET,
       message:
         "The docs agent workflow needs a PR context loader before classification can run.",
@@ -113,6 +126,43 @@ export async function runGitHubDocAgentWorkflow(
     wasModelSkipped = true;
   }
 
+  let docGeneration: GitHubDocAgentWorkflowResult["docGeneration"] = null;
+
+  if (classification.needsDocs) {
+    try {
+      docGeneration = await generatePullRequestDocs(
+        {
+          classification,
+          context,
+          docsWriteTarget: DOCS_WRITE_TARGET,
+          event: input.event,
+        },
+        {
+          loadDocsPages: dependencies.loadDocsPages,
+          writer: dependencies.docWriter,
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown doc generation error.";
+
+      return {
+        accepted: false,
+        code: "doc_generation_failed",
+        classification: {
+          ...classification,
+          changedFilesConsidered: heuristicEvaluation.changedFilesConsidered,
+          source,
+          wasModelSkipped,
+        },
+        docGeneration: null,
+        docsWriteTarget: DOCS_WRITE_TARGET,
+        message: `Documentation generation failed after classification: ${message}`,
+        sourcePrNumber: input.event.pullRequest.number,
+      };
+    }
+  }
+
   const code =
     mode === "live"
       ? classification.needsDocs
@@ -129,9 +179,11 @@ export async function runGitHubDocAgentWorkflow(
       source,
       wasModelSkipped,
     },
+    docGeneration,
     docsWriteTarget: DOCS_WRITE_TARGET,
     message: buildWorkflowMessage({
       classification,
+      generatedOperationCount: docGeneration?.operations.length ?? 0,
       mode,
       source,
     }),

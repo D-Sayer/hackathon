@@ -106,6 +106,40 @@ export interface PullRequestClassification {
   targetPages: string[];
 }
 
+export interface RepositoryDocsPage {
+  content: string;
+  path: string;
+}
+
+export interface DocsPageTarget {
+  existingContent: string | null;
+  matchType: "created_new" | "existing_exact" | "existing_unique";
+  operation: "create" | "update";
+  path: string;
+  requestedTarget: string;
+}
+
+export interface GeneratedDocWriterDraft {
+  content: string;
+  description: string;
+  path: string;
+  title: string;
+}
+
+export interface GeneratedDocFileOperation {
+  content: string;
+  path: string;
+  previousContent: string | null;
+  summary: string;
+  type: "create" | "update";
+}
+
+export interface GeneratedDocsResult {
+  operations: GeneratedDocFileOperation[];
+  patchSummary: string[];
+  targets: DocsPageTarget[];
+}
+
 export type PullRequestClassificationSource =
   | "heuristic"
   | "model"
@@ -134,12 +168,31 @@ export type PullRequestContextLoader = (
   event: NormalizedPullRequestWebhookEvent,
 ) => Promise<PullRequestClassificationContext>;
 
+export interface GeneratedDocWriterInput {
+  classification: PullRequestClassification;
+  context: PullRequestClassificationContext;
+  diffSnippets: PullRequestDiffSnippet[];
+  docsPages: RepositoryDocsPage[];
+  docsWriteTarget: DocsWriteTarget;
+  event: NormalizedPullRequestWebhookEvent;
+  targets: DocsPageTarget[];
+}
+
+export type PullRequestDocWriter = (
+  input: GeneratedDocWriterInput,
+) => Promise<GeneratedDocWriterDraft[]>;
+
+export type DocsPageLoader = (input: {
+  docsWriteTarget: DocsWriteTarget;
+}) => Promise<RepositoryDocsPage[]>;
+
 export interface GitHubDocAgentWorkflowResult {
   accepted: boolean;
   code:
     | "accepted"
     | "classified_needs_docs"
     | "classified_no_docs"
+    | "doc_generation_failed"
     | "dry_run"
     | "workflow_not_configured"
     | "unsupported_action"
@@ -149,6 +202,7 @@ export interface GitHubDocAgentWorkflowResult {
     source: PullRequestClassificationSource;
     wasModelSkipped: boolean;
   };
+  docGeneration: GeneratedDocsResult | null;
   docsWriteTarget: DocsWriteTarget;
   message: string;
   sourcePrNumber: number;

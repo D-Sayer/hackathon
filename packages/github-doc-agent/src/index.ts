@@ -8,12 +8,24 @@ export {
   evaluatePullRequestHeuristics,
 } from "./classify-pr";
 export {
+  createAiPullRequestDocWriter,
+  createDeterministicPullRequestDocWriter,
+  createLocalDocsPageLoader,
+  generatePullRequestDocs,
+} from "./generate-docs";
+export {
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
   verifyGitHubWebhookSignature,
 } from "./normalize-webhook";
 export { runGitHubDocAgentWorkflow } from "./workflow";
 export type {
+  DocsPageLoader,
+  DocsPageTarget,
+  GeneratedDocFileOperation,
+  GeneratedDocWriterDraft,
+  GeneratedDocWriterInput,
+  GeneratedDocsResult,
   GitHubDocAgentWorkflowInput,
   GitHubDocAgentWorkflowResult,
   GitHubWebhookHeaders,
@@ -27,6 +39,8 @@ export type {
   PullRequestClassifier,
   PullRequestClassifierInput,
   PullRequestContextLoader,
+  PullRequestDocWriter,
   PullRequestDiffSnippet,
   PullRequestHeuristicEvaluation,
+  RepositoryDocsPage,
 } from "./types";
