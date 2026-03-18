@@ -12,6 +12,18 @@ import { trpcServer } from "@hono/trpc-server";
 import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { createApp } from "./app";
 
+const chatModels = [
+  "gpt-5.2-chat-latest",
+  "gpt-5-nano-2025-08-07",
+  "gpt-4.1-2025-04-14",
+] as const;
+
+function getChatModel(model: unknown) {
+  return typeof model === "string" && chatModels.includes(model as (typeof chatModels)[number])
+    ? model
+    : "gpt-5.2-chat-latest";
+}
+
 const docsAgentModel = openai(
   env.DOCS_AGENT_MODEL ?? "gpt-4.1-mini-2025-04-14",
 );
@@ -63,9 +75,10 @@ app.use("/ai", async (c, next) => {
 app.post("/ai", async (c) => {
   const body = await c.req.json();
   const uiMessages = body.messages || [];
+  const chatModel = getChatModel(body.model);
   const { devToolsMiddleware } = await import("@ai-sdk/devtools");
   const model = wrapLanguageModel({
-    model: openai("gpt-5.2-chat-latest"),
+    model: openai(chatModel),
     middleware: devToolsMiddleware(),
   });
 
