@@ -1,0 +1,214 @@
+---
+title: "Sheet"
+description: "Create Sheet component documentation page with usage, composition, patterns, and API details"
+---
+
+# Sheet
+
+The `Sheet` component is a slide-over panel built on top of the `Dialog` primitive from `@base-ui/react/dialog`. It provides a structured, accessible way to present secondary content such as forms, filters, navigation, or contextual details without navigating away from the current page.
+
+Internally, `Sheet` composes the Dialog primitive and re-exports its core building blocks with design system defaults.
+
+---
+
+## Import
+
+```tsx
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetClose,
+} from "@hackathon/ui/components/sheet"
+```
+
+---
+
+## Basic Usage
+
+A `Sheet` is composed using the same pattern as `Dialog`: wrap your UI in `Sheet`, use `SheetTrigger` to open it, and render your panel inside `SheetContent`.
+
+```tsx
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetClose,
+} from "@hackathon/ui/components/sheet"
+import { Button } from "@hackathon/ui/components/button"
+
+export function SheetExample() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button>Open sheet</Button>
+      </SheetTrigger>
+
+      <SheetContent>
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Edit profile</h2>
+          <p className="text-sm text-muted-foreground">
+            Make changes to your profile information here.
+          </p>
+
+          <SheetClose asChild>
+            <Button variant="outline">Close</Button>
+          </SheetClose>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+```
+
+---
+
+## Composition
+
+The Sheet API mirrors the Dialog primitive and exposes the following building blocks:
+
+- `Sheet` – Root container that manages open state.
+- `SheetTrigger` – Element that toggles the sheet.
+- `SheetContent` – The panel content rendered in a portal.
+- `SheetClose` – Closes the sheet when activated.
+- `SheetPortal` – Portal wrapper (advanced use).
+- `SheetOverlay` – Backdrop overlay (advanced use).
+
+In most cases, you only need `Sheet`, `SheetTrigger`, `SheetContent`, and optionally `SheetClose`.
+
+---
+
+## Common Patterns
+
+### Side Panel
+
+Sheets are commonly used as right-side panels for secondary tasks.
+
+```tsx
+<Sheet>
+  <SheetTrigger asChild>
+    <Button variant="secondary">Open settings</Button>
+  </SheetTrigger>
+
+  <SheetContent className="w-[400px] sm:w-[540px]">
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold">Settings</h2>
+      {/* Settings form or content */}
+    </div>
+  </SheetContent>
+</Sheet>
+```
+
+Adjust width and layout via `className` on `SheetContent`.
+
+---
+
+### Form Inside a Sheet
+
+Sheets are well-suited for inline create/edit flows.
+
+```tsx
+<Sheet>
+  <SheetTrigger asChild>
+    <Button>Create project</Button>
+  </SheetTrigger>
+
+  <SheetContent>
+    <form className="space-y-4">
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Name</label>
+        <input className="w-full rounded-md border px-3 py-2 text-sm" />
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <SheetClose asChild>
+          <Button variant="outline" type="button">
+            Cancel
+          </Button>
+        </SheetClose>
+        <Button type="submit">Save</Button>
+      </div>
+    </form>
+  </SheetContent>
+</Sheet>
+```
+
+Use `SheetClose` with `asChild` to wrap buttons that should close the sheet.
+
+---
+
+### Controlled vs Uncontrolled
+
+By default, `Sheet` is uncontrolled and manages its own open state.
+
+```tsx
+<Sheet>
+  <SheetTrigger>Open</SheetTrigger>
+  <SheetContent>Content</SheetContent>
+</Sheet>
+```
+
+For controlled usage, pass `open` and `onOpenChange`:
+
+```tsx
+const [open, setOpen] = React.useState(false)
+
+<Sheet open={open} onOpenChange={setOpen}>
+  <SheetTrigger>Open</SheetTrigger>
+  <SheetContent>Content</SheetContent>
+</Sheet>
+```
+
+Use controlled mode when the sheet’s visibility must be coordinated with routing, global state, or async workflows.
+
+---
+
+## API Reference
+
+`Sheet` and its subcomponents are thin wrappers around the Dialog primitive from `@base-ui/react/dialog`. All props from the corresponding primitive parts are supported.
+
+### `Sheet`
+
+Extends: `SheetPrimitive.Root.Props`
+
+Common props:
+
+- `open?: boolean` – Controlled open state.
+- `defaultOpen?: boolean` – Initial open state (uncontrolled).
+- `onOpenChange?: (open: boolean) => void` – Called when open state changes.
+
+### `SheetTrigger`
+
+Extends: `SheetPrimitive.Trigger.Props`
+
+Common props:
+
+- `asChild?: boolean` – Allows rendering a custom element (e.g., `Button`) as the trigger.
+
+### `SheetContent`
+
+Extends: `SheetPrimitive.Content.Props`
+
+Common props:
+
+- `className?: string` – Apply layout and sizing styles.
+- `side?: "top" | "right" | "bottom" | "left"` (if exposed by the underlying primitive) – Controls which edge the sheet enters from.
+
+### `SheetClose`
+
+Extends: `SheetPrimitive.Close.Props`
+
+Used to close the sheet from within its content.
+
+---
+
+## Accessibility
+
+Because `Sheet` is built on top of the Dialog primitive:
+
+- Focus is trapped while the sheet is open.
+- Focus returns to the trigger when the sheet closes.
+- The sheet is rendered in a portal to avoid stacking and overflow issues.
+- The overlay prevents interaction with background content.
+
+Always provide a clear heading and, when appropriate, descriptive text inside `SheetContent` to ensure a clear context for assistive technologies.
