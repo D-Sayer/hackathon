@@ -409,7 +409,44 @@ describe("github testing agent intake", () => {
       mode: "dry-run",
       sourcePrNumber: 42,
       wasModelSkipped: true,
+      writebackErrorMessage: null,
       writebackStatus: "dry_run",
+    });
+  });
+
+  test("includes writeback error details in the structured workflow log entry", async () => {
+    const event = createNormalizedEvent();
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event,
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async () => {
+            throw new Error("GitHub API POST /repos/acme/repo/issues/123/comments failed (403): Resource not accessible by integration");
+          },
+          listIssueComments: async () => [],
+          updateIssueComment: async () => {
+            throw new Error("Should not update");
+          },
+        },
+        loadPullRequestReviewContext: async () => featureReviewContextFixture,
+      },
+    );
+
+    const logEntry = createGitHubTestingAgentWorkflowLogEntry({
+      event,
+      mode: "live",
+      result,
+    });
+
+    expect(logEntry).toMatchObject({
+      sourcePrNumber: 42,
+      writebackErrorMessage:
+        "GitHub API POST /repos/acme/repo/issues/123/comments failed (403): Resource not accessible by integration",
+      writebackStatus: "failed",
     });
   });
 
