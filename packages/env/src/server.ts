@@ -8,6 +8,18 @@ export const env = createEnv({
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.url(),
     CORS_ORIGIN: z.url(),
+    GITHUB_APP_ID: z.string().min(1).optional(),
+    GITHUB_APP_PRIVATE_KEY: z.string().min(1).optional(),
+    GITHUB_WEBHOOK_SECRET: z.string().min(1).optional(),
+    GITHUB_REPO_OWNER: z.string().min(1).optional(),
+    GITHUB_REPO_NAME: z.string().min(1).optional(),
+    DOCS_AGENT_MODEL: z.string().min(1).optional(),
+    DOCS_AGENT_DOCS_ROOT: z.string().min(1).default("apps/fumadocs/content/docs"),
+    DOCS_AGENT_BASE_BRANCH: z.string().min(1).default("main"),
+    DOCS_AGENT_DRY_RUN: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
     GITHUB_DOC_AGENT_ENABLED: z
       .enum(["true", "false"])
       .default("false")
