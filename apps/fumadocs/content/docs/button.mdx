@@ -3,8 +3,6 @@ title: Button
 description: Variants, sizes, states, and usage guidance for primary action controls.
 ---
 
-# Button
-
 The `Button` component is the shared action primitive for click, submit, and utility interactions. It is built on the Base UI button primitive and wrapped with a small variant and size API that keeps presentation consistent across apps.
 
 ## When to use it
@@ -30,7 +28,9 @@ The component supports both icon-only buttons and inline icons paired with text.
 <ButtonIconDemo />
 
 <Guidance title="Icon usage">
-  Reserve icon-only buttons for universally recognizable actions such as copy, settings, or open notifications. If the meaning might be ambiguous, pair the icon with visible text instead.
+  Reserve icon-only buttons for universally recognizable actions such as copy,
+  settings, or open notifications. If the meaning might be ambiguous, pair the
+  icon with visible text instead.
 </Guidance>
 
 ## States
@@ -62,21 +62,21 @@ Use a button when the user is performing an action such as saving, confirming, d
 
 ## Supported variants
 
-| Variant | Use case |
-| --- | --- |
-| `default` | Primary actions and forward progress |
-| `outline` | Secondary actions on quiet surfaces |
-| `secondary` | Medium-emphasis actions with filled treatment |
-| `ghost` | Utility actions in dense or low-emphasis UI |
-| `destructive` | Dangerous or irreversible actions |
-| `link` | Inline or text-like actions |
+| Variant       | Use case                                      |
+| ------------- | --------------------------------------------- |
+| `default`     | Primary actions and forward progress          |
+| `outline`     | Secondary actions on quiet surfaces           |
+| `secondary`   | Medium-emphasis actions with filled treatment |
+| `ghost`       | Utility actions in dense or low-emphasis UI   |
+| `destructive` | Dangerous or irreversible actions             |
+| `link`        | Inline or text-like actions                   |
 
 ## Supported sizes
 
-| Size | Use case |
-| --- | --- |
-| `xs` | Very dense utility rows |
-| `sm` | Compact forms and supporting actions |
-| `default` | Standard action layouts |
-| `lg` | Prominent actions or spacious layouts |
+| Size                                    | Use case                                 |
+| --------------------------------------- | ---------------------------------------- |
+| `xs`                                    | Very dense utility rows                  |
+| `sm`                                    | Compact forms and supporting actions     |
+| `default`                               | Standard action layouts                  |
+| `lg`                                    | Prominent actions or spacious layouts    |
 | `icon`, `icon-xs`, `icon-sm`, `icon-lg` | Icon-only controls at matching densities |
