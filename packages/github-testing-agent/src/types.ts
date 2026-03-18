@@ -240,5 +240,6 @@ export interface GitHubTestingAgentWorkflowLogEntry {
   mode: "dry-run" | "live";
   sourcePrNumber: number;
   wasModelSkipped: boolean;
+  writebackErrorMessage: string | null;
   writebackStatus: GitHubTestingAgentWorkflowResult["writeback"]["status"];
 }

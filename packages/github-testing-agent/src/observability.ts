@@ -22,6 +22,7 @@ export function createGitHubTestingAgentWorkflowLogEntry(params: {
     mode: params.mode,
     sourcePrNumber: params.event.pullRequest.number,
     wasModelSkipped: params.result.analysis.wasModelSkipped,
+    writebackErrorMessage: params.result.writeback.errorMessage,
     writebackStatus: params.result.writeback.status,
   };
 }
