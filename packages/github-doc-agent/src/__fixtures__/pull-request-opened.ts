@@ -1,36 +1,3 @@
-export const pullRequestOpenedPayload = {
-  action: "opened",
-  installation: {
-    id: 123,
-  },
-  pull_request: {
-    base: {
-      ref: "main",
-    },
-    body: "This PR adds the first docs agent intake slice.",
-    draft: false,
-    head: {
-      ref: "feature/docs-agent",
-      repo: {
-        full_name: "acme/repo",
-      },
-    },
-    html_url: "https://github.com/acme/repo/pull/42",
-    number: 42,
-    title: "Add docs agent",
-    user: {
-      login: "octocat",
-    },
-  },
-  repository: {
-    default_branch: "main",
-    full_name: "acme/repo",
-    name: "repo",
-    owner: {
-      login: "acme",
-    },
-  },
-  sender: {
-    login: "octocat",
-  },
-} as const;
+import pullRequestOpenedPayloadJson from "./pull-request-opened.json";
+
+export const pullRequestOpenedPayload = pullRequestOpenedPayloadJson;

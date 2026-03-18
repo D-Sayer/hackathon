@@ -8,6 +8,7 @@ import {
   DOCS_WRITE_TARGET,
   createAiPullRequestClassifier,
   createAiPullRequestDocWriter,
+  createGitHubDocAgentWorkflowLogEntry,
   createGitHubAppDocsWritebackClient,
   createGitHubAppPullRequestContextLoader,
   createLocalDocsPageLoader,
@@ -96,6 +97,12 @@ app.post("/webhooks/github", async (c) => {
     const status =
       signatureError.code === "webhook_secret_not_configured" ? 503 : 401;
 
+    console.warn("[github-webhook] rejected", {
+      code: signatureError.code,
+      deliveryId: headers.deliveryId,
+      eventName: headers.eventName,
+    });
+
     return c.json(signatureError, status);
   }
 
@@ -123,6 +130,12 @@ app.post("/webhooks/github", async (c) => {
       normalization.code === "invalid_payload"
         ? 400
         : 202;
+
+    console.info("[github-webhook] ignored", {
+      code: normalization.code,
+      deliveryId: headers.deliveryId,
+      eventName: headers.eventName,
+    });
 
     return c.json(normalization, status);
   }
@@ -175,6 +188,15 @@ app.post("/webhooks/github", async (c) => {
   }
 
   const status = workflowResult.accepted ? 202 : 503;
+
+  console.info(
+    "[github-webhook] workflow",
+    createGitHubDocAgentWorkflowLogEntry({
+      event: normalization.event,
+      mode: env.GITHUB_DOC_AGENT_MODE,
+      result: workflowResult,
+    }),
+  );
 
   return c.json(
     {

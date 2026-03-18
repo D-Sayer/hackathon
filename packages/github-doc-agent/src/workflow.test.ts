@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   DOCS_WRITE_TARGET,
+  createGitHubDocAgentWorkflowLogEntry,
   generatePullRequestDocs,
   evaluatePullRequestHeuristics,
   normalizeGitHubWebhookEvent,
@@ -311,6 +312,76 @@ describe("github doc agent workflow", () => {
     });
     expect(result.classification.source).toBe("model");
     expect(result.classification.targetPages).toEqual(["dashboard"]);
+  });
+
+  test("keeps dry-run writeback disabled even when docs are generated", async () => {
+    const event = createNormalizedEvent();
+    let writebackWasCalled = false;
+
+    const githubWritebackClient: GitHubDocsWritebackClient = {
+      commitDocsChanges: async () => {
+        writebackWasCalled = true;
+
+        return {
+          commitSha: "unexpected",
+          contentChanged: true,
+        };
+      },
+      createBranch: async () => {
+        writebackWasCalled = true;
+        return {
+          name: "docs-bot/pr-42",
+          sha: "unexpected",
+        };
+      },
+      createDraftPullRequest: async () => {
+        writebackWasCalled = true;
+        return createDocsPullRequestReference();
+      },
+      findOpenPullRequest: async () => {
+        writebackWasCalled = true;
+        return null;
+      },
+      getBranch: async () => {
+        writebackWasCalled = true;
+        return null;
+      },
+      updatePullRequest: async () => {
+        writebackWasCalled = true;
+        return createDocsPullRequestReference();
+      },
+    };
+
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event,
+        mode: "dry-run",
+      },
+      {
+        classifier: async () => ({
+          needsDocs: true,
+          proposedChanges: [
+            "Document the new dashboard filter workflow for web users.",
+          ],
+          rationale: "The PR adds a user-facing dashboard filtering feature.",
+          targetPages: ["dashboard"],
+        }),
+        githubWritebackClient,
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
+        loadPullRequestContext: async () => webFeatureClassificationFixture,
+      },
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.code).toBe("dry_run");
+    expect(result.docGeneration?.operations).toHaveLength(1);
+    expect(result.writeback).toBeNull();
+    expect(writebackWasCalled).toBe(false);
   });
 
   test("classifies an API change as docs-needed when the model runs", async () => {
@@ -1070,6 +1141,78 @@ describe("github doc agent workflow", () => {
       commitSha: "commit-789",
       pullRequest: null,
       status: "no_changes",
+    });
+  });
+
+  test("builds a safe structured workflow log entry", async () => {
+    const event = createNormalizedEvent();
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event,
+        mode: "live",
+      },
+      {
+        classifier: async () => ({
+          needsDocs: true,
+          proposedChanges: [
+            "Document the new dashboard filter workflow for web users.",
+          ],
+          rationale: "The PR adds a user-facing dashboard filtering feature.",
+          targetPages: ["dashboard"],
+        }),
+        githubWritebackClient: {
+          commitDocsChanges: async () => ({
+            commitSha: "commit-123",
+            contentChanged: true,
+          }),
+          createBranch: async () => ({
+            name: "docs-bot/pr-42",
+            sha: "branch-sha",
+          }),
+          createDraftPullRequest: async (input) =>
+            createDocsPullRequestReference({
+              body: input.body,
+              number: 420,
+              title: input.title,
+            }),
+          findOpenPullRequest: async () => null,
+          getBranch: async () => null,
+          updatePullRequest: async () => {
+            throw new Error("Expected a new draft PR instead of an update.");
+          },
+        },
+        loadDocsPages: async () => [
+          {
+            content: docsIndexPage,
+            path: "index.mdx",
+          },
+        ],
+        loadPullRequestContext: async () => webFeatureClassificationFixture,
+      },
+    );
+
+    const logEntry = createGitHubDocAgentWorkflowLogEntry({
+      event,
+      mode: "live",
+      result,
+    });
+
+    expect(logEntry).toEqual({
+      accepted: true,
+      action: "opened",
+      classifierOutcome: "needs_docs",
+      classifierSource: "model",
+      code: "classified_needs_docs",
+      deliveryId: "delivery-test",
+      docsPrAction: "created",
+      docsPrNumber: 420,
+      docsWriteTarget: DOCS_WRITE_TARGET,
+      eventName: "pull_request",
+      generatedOperationCount: 1,
+      mode: "live",
+      sourcePrNumber: 42,
+      wasModelSkipped: false,
+      writebackStatus: "pull_request_created",
     });
   });
 });

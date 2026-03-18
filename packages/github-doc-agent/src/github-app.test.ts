@@ -80,7 +80,7 @@ describe("github app integration", () => {
             expect(url).toContain("/app/installations/99/access_tokens");
           },
           response: createJsonResponse({
-            expires_at: "2026-03-18T01:00:00.000Z",
+            expires_at: "2099-03-18T01:00:00.000Z",
             token: "installation-token",
           }),
         },
@@ -148,7 +148,7 @@ describe("github app integration", () => {
             expect(url).toContain("/app/installations/99/access_tokens");
           },
           response: createJsonResponse({
-            expires_at: "2026-03-18T01:00:00.000Z",
+            expires_at: "2099-03-18T01:00:00.000Z",
             token: "installation-token",
           }),
         },
@@ -221,7 +221,7 @@ describe("github app integration", () => {
             expect(url).toContain("/app/installations/99/access_tokens");
           },
           response: createJsonResponse({
-            expires_at: "2026-03-18T01:00:00.000Z",
+            expires_at: "2099-03-18T01:00:00.000Z",
             token: "installation-token",
           }),
         },

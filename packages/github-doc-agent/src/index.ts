@@ -7,6 +7,7 @@ export {
   createAiPullRequestClassifier,
   evaluatePullRequestHeuristics,
 } from "./classify-pr";
+export { createGitHubDocAgentWorkflowLogEntry } from "./observability";
 export {
   createGitHubAppDocsWritebackClient,
   createGitHubAppPullRequestContextLoader,
@@ -35,6 +36,7 @@ export type {
   GeneratedDocWriterInput,
   GeneratedDocsResult,
   GitHubDocAgentWorkflowInput,
+  GitHubDocAgentWorkflowLogEntry,
   GitHubDocAgentWorkflowResult,
   GitHubDocsBranchReference,
   GitHubDocsCommitChangesResult,

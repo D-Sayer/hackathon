@@ -297,3 +297,21 @@ export interface GitHubDocAgentWorkflowResult {
   sourcePrNumber: number;
   writeback: GitHubDocsWritebackSummary | null;
 }
+
+export interface GitHubDocAgentWorkflowLogEntry {
+  accepted: boolean;
+  action: SupportedPullRequestAction;
+  classifierOutcome: "needs_docs" | "no_docs";
+  classifierSource: PullRequestClassificationSource;
+  code: GitHubDocAgentWorkflowResult["code"];
+  deliveryId: string | null;
+  docsPrAction: "created" | "updated" | null;
+  docsPrNumber: number | null;
+  docsWriteTarget: DocsWriteTarget;
+  eventName: SupportedGitHubWebhookEvent;
+  generatedOperationCount: number;
+  mode: "dry-run" | "live";
+  sourcePrNumber: number;
+  wasModelSkipped: boolean;
+  writebackStatus: GitHubDocsWritebackSummary["status"] | null;
+}
