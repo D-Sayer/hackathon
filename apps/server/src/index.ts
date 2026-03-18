@@ -7,12 +7,16 @@ import {
   createAiPullRequestClassifier,
   createAiPullRequestDocWriter,
 } from "@hackathon/github-doc-agent";
+import { createAiPullRequestReviewAnalyzer } from "@hackathon/github-testing-agent";
 import { trpcServer } from "@hono/trpc-server";
 import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
 import { createApp } from "./app";
 
 const docsAgentModel = openai(
   env.DOCS_AGENT_MODEL ?? "gpt-4.1-mini-2025-04-14",
+);
+const testingAgentModel = openai(
+  env.TESTING_AGENT_MODEL ?? "gpt-4.1-mini-2025-04-14",
 );
 
 const app = createApp(env, {
@@ -21,6 +25,9 @@ const app = createApp(env, {
   }),
   pullRequestDocWriter: createAiPullRequestDocWriter({
     model: docsAgentModel,
+  }),
+  pullRequestReviewAnalyzer: createAiPullRequestReviewAnalyzer({
+    model: testingAgentModel,
   }),
 });
 

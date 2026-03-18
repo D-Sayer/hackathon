@@ -99,6 +99,19 @@ describe("server github webhook intake", () => {
 
         return {
           accepted: true,
+          analysis: {
+            blastRadius: [],
+            changedFilesConsidered: [],
+            confidence: "medium",
+            implementationGaps: [],
+            oversights: [],
+            rationale: "accepted for test",
+            shouldComment: false,
+            source: "heuristic",
+            summary: "accepted for test",
+            testingNotes: [],
+            wasModelSkipped: true,
+          },
           code: mode === "live" ? "accepted" : "dry_run",
           context: null,
           message: "accepted for test",

@@ -121,6 +121,41 @@ export interface PullRequestReviewContext {
   pullRequestTitle: string;
 }
 
+export interface PullRequestReviewAnalysis {
+  blastRadius: string[];
+  confidence: "low" | "medium" | "high";
+  implementationGaps: string[];
+  oversights: string[];
+  rationale: string;
+  shouldComment: boolean;
+  summary: string;
+  testingNotes: string[];
+}
+
+export type PullRequestReviewAnalysisSource =
+  | "heuristic"
+  | "model"
+  | "fallback";
+
+export interface PullRequestReviewHeuristicEvaluation {
+  changedFilesConsidered: string[];
+  decision?: PullRequestReviewAnalysis;
+  diffSnippets: PullRequestDiffSnippet[];
+  filteredChangedFiles: string[];
+  shouldSkipModel: boolean;
+  source: "heuristic";
+}
+
+export interface PullRequestReviewAnalyzerInput {
+  context: PullRequestReviewContext;
+  diffSnippets: PullRequestDiffSnippet[];
+  filteredChangedFiles: string[];
+}
+
+export type PullRequestReviewAnalyzer = (
+  input: PullRequestReviewAnalyzerInput,
+) => Promise<PullRequestReviewAnalysis>;
+
 export type PullRequestReviewContextLoader = (
   event: NormalizedTestingPullRequestWebhookEvent,
 ) => Promise<PullRequestReviewContext>;
@@ -128,6 +163,11 @@ export type PullRequestReviewContextLoader = (
 export interface GitHubTestingAgentWorkflowResult {
   accepted: boolean;
   code: "accepted" | "dry_run" | "workflow_not_configured";
+  analysis: PullRequestReviewAnalysis & {
+    changedFilesConsidered: string[];
+    source: PullRequestReviewAnalysisSource;
+    wasModelSkipped: boolean;
+  };
   context:
     | null
     | {
@@ -144,9 +184,14 @@ export interface GitHubTestingAgentWorkflowResult {
 export interface GitHubTestingAgentWorkflowLogEntry {
   accepted: boolean;
   action: SupportedPullRequestAction;
+  analysisShouldComment: boolean;
+  analysisSource: PullRequestReviewAnalysisSource;
+  attachedIssueNumber: number | null;
   code: GitHubTestingAgentWorkflowResult["code"];
+  confidence: PullRequestReviewAnalysis["confidence"];
   deliveryId: string | null;
   eventName: SupportedGitHubWebhookEvent;
   mode: "dry-run" | "live";
   sourcePrNumber: number;
+  wasModelSkipped: boolean;
 }

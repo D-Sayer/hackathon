@@ -50,6 +50,7 @@
   "devDependencies": {
     "@hackathon/config": "workspace:*",
     "@types/bun": "catalog:",
+    "ai": "catalog:",
     "turbo": "^2.8.12",
     "typescript": "^5"
   },

@@ -24,6 +24,7 @@ import {
 } from "@hackathon/github-testing-agent";
 import type {
   GitHubTestingAgentWorkflowResult,
+  PullRequestReviewAnalyzer,
   PullRequestReviewContextLoader,
 } from "@hackathon/github-testing-agent";
 import { Hono } from "hono";
@@ -49,6 +50,7 @@ interface CreateAppDependencies {
   normalizeGitHubWebhookEvent?: typeof normalizeGitHubWebhookEvent;
   pullRequestClassifier?: PullRequestClassifier;
   pullRequestContextLoader?: PullRequestContextLoader | null;
+  pullRequestReviewAnalyzer?: PullRequestReviewAnalyzer;
   pullRequestReviewContextLoader?: PullRequestReviewContextLoader | null;
   pullRequestDocWriter?: PullRequestDocWriter;
   readGitHubWebhookHeaders?: typeof readGitHubWebhookHeaders;
@@ -284,6 +286,19 @@ export function createApp(
         ? null
         : {
             accepted: false,
+            analysis: {
+              blastRadius: [],
+              changedFilesConsidered: [],
+              confidence: "low",
+              implementationGaps: [],
+              oversights: [],
+              rationale: testingNormalization.message,
+              shouldComment: false,
+              source: "fallback",
+              summary: testingNormalization.message,
+              testingNotes: [],
+              wasModelSkipped: true,
+            },
             code: "workflow_not_configured",
             context: null,
             message: testingNormalization.message,
@@ -326,6 +341,7 @@ export function createApp(
             mode: appEnv.GITHUB_TESTING_AGENT_MODE,
           },
           {
+            analyzer: dependencies.pullRequestReviewAnalyzer,
             isConfigured:
               appEnv.GITHUB_TESTING_AGENT_ENABLED &&
               pullRequestReviewContextLoader !== null,

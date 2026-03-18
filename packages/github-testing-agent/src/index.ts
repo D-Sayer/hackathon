@@ -3,6 +3,10 @@ export {
   SUPPORTED_PULL_REQUEST_ACTIONS,
   TESTING_BOT_BRANCH_PREFIX,
 } from "./constants";
+export {
+  createAiPullRequestReviewAnalyzer,
+  evaluatePullRequestReviewHeuristics,
+} from "./analyze-review";
 export { createGitHubTestingAgentWorkflowLogEntry } from "./observability";
 export {
   extractAttachedIssueReferences,
@@ -30,8 +34,13 @@ export type {
   IssueContext,
   NormalizedTestingPullRequestWebhookEvent,
   PullRequestDiffSnippet,
+  PullRequestReviewAnalysis,
+  PullRequestReviewAnalysisSource,
+  PullRequestReviewAnalyzer,
+  PullRequestReviewAnalyzerInput,
   PullRequestReviewContext,
   PullRequestReviewContextLoader,
+  PullRequestReviewHeuristicEvaluation,
   SupportedGitHubWebhookEvent,
   SupportedPullRequestAction,
   TestingPullRequestChangedFile,
