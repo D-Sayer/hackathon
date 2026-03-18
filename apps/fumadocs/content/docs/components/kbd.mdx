@@ -1,0 +1,168 @@
+---
+title: "Kbd"
+description: "Create documentation page for the new Kbd and KbdGroup components."
+---
+
+## Kbd
+
+`Kbd` is a small utility component for displaying keyboard keys and shortcuts. It renders a styled `<kbd>` element with consistent sizing, spacing, and typography that matches the rest of the UI system.
+
+Use it to document keyboard shortcuts, inline key hints, or command references in UI copy.
+
+---
+
+## Installation
+
+The `Kbd` component is available from the shared UI package:
+
+```tsx
+import { Kbd, KbdGroup } from "@hackathon/ui/components/kbd"
+```
+
+---
+
+## Basic Usage
+
+### Single Key
+
+Use `Kbd` to render an individual key.
+
+```tsx
+<Kbd>⌘</Kbd>
+<Kbd>K</Kbd>
+```
+
+Common usage inside text:
+
+```tsx
+Press <Kbd>⌘</Kbd> + <Kbd>K</Kbd> to open the command menu.
+```
+
+`Kbd` is non-interactive (`pointer-events-none`) and intended purely for visual representation.
+
+---
+
+## Multiple Keys
+
+Use `KbdGroup` to visually group a combination of keys.
+
+```tsx
+<KbdGroup>
+  <Kbd>⌘</Kbd>
+  <Kbd>K</Kbd>
+</KbdGroup>
+```
+
+This keeps spacing consistent and ensures keys appear as a single shortcut unit.
+
+Example in context:
+
+```tsx
+<div className="text-sm text-muted-foreground">
+  Open search with
+  <KbdGroup className="ml-2">
+    <Kbd>⌘</Kbd>
+    <Kbd>K</Kbd>
+  </KbdGroup>
+</div>
+```
+
+---
+
+## When to Use
+
+Use `Kbd` when:
+
+- Displaying keyboard shortcuts in tooltips, menus, or settings
+- Referencing a single key inline in text
+- Showing command hints in command palettes or help dialogs
+
+Use `KbdGroup` when:
+
+- Displaying multi-key shortcuts (e.g., `⌘ + K`, `Ctrl + Shift + P`)
+- You want consistent horizontal spacing between keys
+
+Avoid using `Kbd` for clickable buttons or interactive controls. It is strictly presentational.
+
+---
+
+## Styling Details
+
+`Kbd` renders a `<kbd>` element with:
+
+- Fixed height (`h-5`) and minimum width (`min-w-5`)
+- Centered inline-flex layout
+- Muted background and foreground colors
+- Small rounded corners
+- Compact font sizing (`text-xs`, `font-medium`)
+
+It also adapts when used inside certain slots (e.g., tooltip content) via `data-slot` selectors.
+
+You can customize styling via `className`:
+
+```tsx
+<Kbd className="bg-primary text-primary-foreground">
+  Enter
+</Kbd>
+```
+
+---
+
+## API
+
+### Kbd
+
+Extends all native `<kbd>` props.
+
+| Prop        | Type                         | Description |
+|------------|------------------------------|------------|
+| `className` | `string`                     | Additional classes merged with the default styles. |
+| `...props`  | `React.ComponentProps<"kbd">` | All standard `<kbd>` element props. |
+
+
+### KbdGroup
+
+Extends all native `<div>` props.
+
+| Prop        | Type                         | Description |
+|------------|------------------------------|------------|
+| `className` | `string`                     | Additional classes merged with the default inline group styles. |
+| `...props`  | `React.ComponentProps<"div">` | All standard container props. |
+
+---
+
+## Accessibility
+
+Because `Kbd` renders a semantic `<kbd>` element, it communicates keyboard input meaning to assistive technologies.
+
+Keep in mind:
+
+- Do not attach click handlers directly to `Kbd`
+- Provide descriptive surrounding text so shortcuts are understandable out of context
+- Ensure shortcuts are documented consistently across the app
+
+---
+
+## Examples
+
+### Command Palette Hint
+
+```tsx
+<div className="flex items-center justify-between rounded-md border p-2 text-sm">
+  <span>Search</span>
+  <KbdGroup>
+    <Kbd>⌘</Kbd>
+    <Kbd>K</Kbd>
+  </KbdGroup>
+</div>
+```
+
+### Form Submission Hint
+
+```tsx
+<p className="text-sm text-muted-foreground">
+  Press <Kbd>Enter</Kbd> to submit.
+</p>
+```
+
+Use these patterns consistently wherever keyboard affordances are exposed to users.
