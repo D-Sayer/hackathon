@@ -2,11 +2,11 @@
   "title": "Docs",
   "pages": [
     "index",
-    "button",
-    "card",
     "alert-dialog",
     "badge",
+    "button",
     "button-group",
+    "card",
     "checkbox",
     "dropdown-menu",
     "field",

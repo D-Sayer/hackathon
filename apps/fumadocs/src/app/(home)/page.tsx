@@ -15,8 +15,9 @@ export default function HomePage() {
               Hackathon UI for fast, consistent product surfaces.
             </h1>
             <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Reference docs for the shared primitives used across this monorepo, starting
-              with the two most reused building blocks: buttons and cards.
+              Reference docs for the shared primitives used across this
+              monorepo, starting with the two most reused building blocks:
+              buttons and cards.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -38,19 +39,19 @@ export default function HomePage() {
 
         <section className="grid w-full max-w-xl gap-4 sm:grid-cols-2">
           <div className="border border-border/80 bg-card p-5 text-card-foreground shadow-sm">
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Components</p>
-            <p className="mt-3 text-3xl font-semibold">2</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Focused docs for `Button` and `Card`, including variants, anatomy, and
-              implementation notes.
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              Components
             </p>
+            <p className="mt-3 text-3xl font-semibold">17</p>
           </div>
           <div className="border border-border/80 bg-card p-5 text-card-foreground shadow-sm">
-            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Source of Truth</p>
+            <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+              Source of Truth
+            </p>
             <p className="mt-3 text-3xl font-semibold">@hackathon/ui</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Live examples use the real shared package so docs stay aligned with shipped
-              styles and props.
+              Live examples use the real shared package so docs stay aligned
+              with shipped styles and props.
             </p>
           </div>
         </section>

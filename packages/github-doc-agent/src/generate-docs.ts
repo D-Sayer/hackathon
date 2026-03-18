@@ -493,6 +493,8 @@ export function createAiPullRequestDocWriter(params: {
         "Use the existing button docs as the canonical example for tone, structure, and depth.",
         "Follow the documentation pattern shown in apps/fumadocs/content/docs/button.mdx and the supporting demo component pattern shown in apps/fumadocs/src/components/docs/button-docs.tsx.",
         "When documenting components, prefer the same style of authoring: practical overview, usage guidance, clear headings, API detail, and references to concrete demo/example components when appropriate.",
+        "If the PR adds a newly documented component, assume the companion docs change set must also include exactly these related updates: create a supporting React docs component in apps/fumadocs/src/components/docs/[component-name]-docs.tsx, update the component count in apps/fumadocs/src/app/(home)/page.tsx, and add the page slug to apps/fumadocs/content/docs/meta.json.",
+        "Do not create any other files, and do not modify MDX pages that are not directly related to the PR.",
       ].join(" "),
       prompt: [
         `PR title: ${input.event.pullRequest.title}`,
@@ -522,6 +524,15 @@ export function createAiPullRequestDocWriter(params: {
           "- descriptive DemoFrame titles and descriptions",
           "- an exported API table component when relevant",
           "- examples grounded in the real component API",
+        ].join("\n"),
+        "Required companion docs changes for newly added components:",
+        [
+          "- Create the supporting docs React component at /apps/fumadocs/src/components/docs/[addedComponentName]-docs.tsx",
+          "- Update /apps/fumadocs/src/app/(home)/page.tsx by incrementing the existing component count instead of hard-coding a new total",
+          "- Update /apps/fumadocs/content/docs/meta.json by appending the new slug to the existing pages list instead of rewriting the list from scratch",
+          "- Do not create any other files",
+          "- Do not modify unrelated MDX files",
+          "- Preserve unrelated entries, structure, and formatting in existing files",
         ].join("\n"),
       ].join("\n\n"),
     });
