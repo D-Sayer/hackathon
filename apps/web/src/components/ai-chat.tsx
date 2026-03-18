@@ -37,8 +37,9 @@ import { DefaultChatTransport } from "ai";
 import { env } from "@hackathon/env/web";
 
 const models = [
-  { id: "gpt-4o", name: "GPT-4o" },
-  { id: "claude-opus-4-20250514", name: "Claude 4 Opus" },
+  { id: "gpt-5.2-chat-latest", name: "GPT-5.2 Chat" },
+  { id: "gpt-5-nano-2025-08-07", name: "GPT-5 Nano" },
+  { id: "gpt-4.1-2025-04-14", name: "GPT-4.1" },
 ];
 
 const InputDemo = () => {
