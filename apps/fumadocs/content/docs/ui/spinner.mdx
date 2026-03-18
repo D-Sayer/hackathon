@@ -1,0 +1,68 @@
+---
+title: "Spinner"
+description: "Complete documentation for the Spinner UI component, including overview, usage, accessibility, API, and examples."
+---
+
+---
+title: Spinner
+---
+
+# Spinner
+
+The `Spinner` component displays a simple animated spinner, typically used to indicate loading states or in-progress operations. It uses the Lucide Loader2 icon paired with a minimal spin animation to match the rest of the UI library's style.
+
+<SpinnerDemo />
+
+## When to use
+
+- **Loading feedback:** Show a `Spinner` when data is being fetched, actions are pending, or asynchronous operations are in progress.
+- **Button/loading indicator:** Embed inside buttons or small surfaces to indicate an ongoing background process.
+- **Page/section states:** Place centered spinners as part of empty or loading state surfaces.
+
+## Usage
+
+Import the component from the UI package:
+
+```tsx
+import { Spinner } from "@hackathon/ui/components/spinner"
+```
+
+Place it where you'd like a loading indicator to display:
+
+```tsx
+<Spinner />
+```
+
+You can adjust its size, color, and other SVG props by passing standard `svg` attributes or using utility classes via the `className` prop.
+
+```tsx
+<Spinner className="size-6 text-muted-foreground" />
+```
+
+The spinner is accessible, with `role="status"` and `aria-label="Loading"` applied by default.
+
+## API
+
+| Prop        | Type                   | Description                          |
+|-------------|------------------------|--------------------------------------|
+| className   | `string?`              | Additional CSS classes               |
+| ...props    | `SVGProps<SVGSVGElement>` | Rest of standard SVG attributes   |
+
+The `Spinner` forwards all additional props to the underlying Lucide Loader2 SVG element. For custom sizing, use the `size-4`, `size-6`, or other Tailwind-style utility classes.
+
+## Accessibility
+
+Spinner includes `role="status"` and `aria-label="Loading"` by default for accessibility screen readers.
+
+## Examples
+
+<SpinnerVariantsDemo />
+
+## References
+
+- See the [Button](/button) docs for an example of embedding spinners in action buttons.
+- The underlying icon is [Lucide Loader2](https://lucide.dev/icons/loader-2).
+
+---
+
+export { SpinnerDemo, SpinnerVariantsDemo } from "../../src/components/docs/spinner-docs"
