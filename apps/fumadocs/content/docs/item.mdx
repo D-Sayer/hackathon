@@ -1,0 +1,34 @@
+---
+title: Item
+description: Rich list rows with media, content, actions, and supporting metadata.
+---
+
+`Item` is the shared row primitive for lists, command surfaces, dashboards, and menu-like content that needs a little more structure than a plain `div`.
+
+## When to use it
+
+- Use it for rows that need a title, supporting description, and one or more actions.
+- Reach for `ItemMedia` when a row needs an icon, avatar, or thumbnail.
+- Use `ItemHeader` and `ItemFooter` when the row needs edge-aligned metadata or controls.
+
+<ItemDemo />
+
+## Slots
+
+<ItemSlotsTable />
+
+## API
+
+<ItemApiTable />
+
+## Usage guidance
+
+### Density
+
+- Pick one size per list so the rows feel related.
+- Use `outline` for visible containers and `muted` when the row should read as a quieter surface.
+
+### Content
+
+- Keep titles short enough to fit on one line whenever possible.
+- Let descriptions wrap rather than compressing the row with custom spacing tweaks.

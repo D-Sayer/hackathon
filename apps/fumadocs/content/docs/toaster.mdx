@@ -1,0 +1,25 @@
+---
+title: Toaster
+description: Theme-aware global toast host for Sonner notifications.
+---
+
+`Toaster` mounts the shared toast surface used for transient notifications. It reads the current theme from `next-themes`, so the notification styling stays aligned with the rest of the app shell.
+
+## When to use it
+
+- Render it once near the root of the application.
+- Drive notifications from application code, not from the toaster component itself.
+- Keep it out of individual pages so every route shares one consistent toast stack.
+
+<ToasterDemo />
+
+<ToasterUsageGuidance />
+
+## API
+
+<ToasterApiTable />
+
+## Usage guidance
+
+- Keep toast copy short and action-focused.
+- Use toasts for transient feedback, not for persistent validation errors.

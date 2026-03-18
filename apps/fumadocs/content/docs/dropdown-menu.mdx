@@ -1,0 +1,41 @@
+---
+title: Dropdown Menu
+description: Menu triggers, nested actions, and selection items for compact command surfaces.
+---
+
+`DropdownMenu` is the shared pattern for compact action menus, submenus, and toggleable menu items. It pairs a trigger with a floating menu surface and keeps the keyboard and focus behavior aligned with the Base UI primitive.
+
+## When to use it
+
+- Use it for secondary actions that should stay out of the primary layout.
+- Reach for a submenu when the action list would otherwise become too long.
+- Use checkbox and radio items when the menu itself needs to represent state.
+
+<DropdownMenuDemo />
+
+## Slots
+
+<DropdownMenuSlotsTable />
+
+<Guidance title="Menu density">
+  Keep menu labels short. Dense menus work best when every row is either an
+  obvious action or a clearly named setting.
+</Guidance>
+
+## API
+
+<DropdownMenuApiTable />
+
+## Usage guidance
+
+### Action hierarchy
+
+- Place destructive items near the bottom and separate them with a divider.
+- Use labels to group related actions, not as decorative headings.
+- Avoid mixing navigation and commands in the same menu unless the intent is obvious.
+
+### State items
+
+- Use `DropdownMenuCheckboxItem` for independent toggles.
+- Use `DropdownMenuRadioGroup` and `DropdownMenuRadioItem` for mutually exclusive choices.
+- Add `DropdownMenuShortcut` only for shortcuts people are likely to remember.
