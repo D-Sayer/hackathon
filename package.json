@@ -41,6 +41,7 @@
     "db:local": "turbo -F @hackathon/db db:local"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.2.10",
     "@hackathon/env": "workspace:*",
     "dotenv": "catalog:",
     "zod": "catalog:"
