@@ -100,6 +100,7 @@ describe("server github webhook intake", () => {
         return {
           accepted: true,
           code: mode === "live" ? "accepted" : "dry_run",
+          context: null,
           message: "accepted for test",
           sourcePrNumber: event.pullRequest.number,
         };
@@ -151,6 +152,7 @@ describe("server github webhook intake", () => {
       testingAgent: {
         accepted: true,
         code: "dry_run",
+        context: null,
         message: "accepted for test",
         sourcePrNumber: 42,
       },

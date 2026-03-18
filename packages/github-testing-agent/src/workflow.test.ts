@@ -5,10 +5,14 @@ import {
   createGitHubTestingAgentWorkflowLogEntry,
   normalizeGitHubTestingWebhookEvent,
   readGitHubWebhookHeaders,
+  resolveAttachedIssueReference,
   runGitHubTestingAgentWorkflow,
   verifyGitHubWebhookSignature,
 } from "./index";
-import type { NormalizedTestingPullRequestWebhookEvent } from "./index";
+import type {
+  NormalizedTestingPullRequestWebhookEvent,
+  PullRequestReviewContext,
+} from "./index";
 import { pullRequestOpenedPayload } from "./__fixtures__/pull-request-opened";
 
 const payload = pullRequestOpenedPayload;
@@ -35,6 +39,49 @@ function createNormalizedEvent(): NormalizedTestingPullRequestWebhookEvent {
   }
 
   return normalized.event;
+}
+
+function createReviewContext(
+  overrides: Partial<PullRequestReviewContext> = {},
+): PullRequestReviewContext {
+  return {
+    attachedIssue: {
+      body: "Implement the testing agent context loader.",
+      htmlUrl: "https://github.com/acme/repo/issues/123",
+      number: 123,
+      state: "open",
+      title: "Build PR review context loading",
+    },
+    attachedIssueReference: {
+      keyword: "fixes",
+      matchedText: "Fixes #123",
+      number: 123,
+      owner: "acme",
+      repo: "repo",
+      source: "body",
+    },
+    changedFiles: [
+      {
+        additions: 12,
+        changeType: "modified",
+        deletions: 3,
+        path: "apps/server/src/app.ts",
+        patch: "@@ -1 +1 @@\n-old\n+new",
+        previousPath: null,
+      },
+    ],
+    diffSnippets: [
+      {
+        path: "apps/server/src/app.ts",
+        snippet: "@@ -1 +1 @@\n-old\n+new",
+      },
+    ],
+    existingFeedbackComment: null,
+    issueSelectionRationale: "Selected issue #123 from the body.",
+    pullRequestBody: "Fixes #123",
+    pullRequestTitle: "Add testing agent review context",
+    ...overrides,
+  };
 }
 
 describe("github testing agent intake", () => {
@@ -191,7 +238,7 @@ describe("github testing agent intake", () => {
     });
   });
 
-  test("accepts dry-run workflow intake without needing issue context yet", async () => {
+  test("accepts dry-run workflow intake after loading review context", async () => {
     const result = await runGitHubTestingAgentWorkflow(
       {
         event: createNormalizedEvent(),
@@ -199,14 +246,22 @@ describe("github testing agent intake", () => {
       },
       {
         isConfigured: true,
+        loadPullRequestReviewContext: async () => createReviewContext(),
       },
     );
 
     expect(result).toEqual({
       accepted: true,
       code: "dry_run",
+      context: {
+        attachedIssueNumber: 123,
+        changedFileCount: 1,
+        diffSnippetCount: 1,
+        existingFeedbackCommentId: null,
+        issueReferenceSource: "body",
+      },
       message:
-        "The testing agent accepted the pull request webhook in dry-run mode. Later slices will load PR and issue context.",
+        "The testing agent loaded PR and issue review context in dry-run mode. Attached issue #123 was loaded from the body.",
       sourcePrNumber: 42,
     });
   });
@@ -224,18 +279,77 @@ describe("github testing agent intake", () => {
     expect(result).toEqual({
       accepted: false,
       code: "workflow_not_configured",
+      context: null,
       message:
         "The testing agent intake is wired, but the workflow is not enabled yet.",
       sourcePrNumber: 42,
     });
   });
 
+  test("surfaces when the review context loader is not configured", async () => {
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+      },
+      {
+        isConfigured: true,
+      },
+    );
+
+    expect(result).toEqual({
+      accepted: false,
+      code: "workflow_not_configured",
+      context: null,
+      message:
+        "The testing agent workflow needs a PR and issue context loader before review can run.",
+      sourcePrNumber: 42,
+    });
+  });
+
+  test("exits safely when no attached issue reference is present", async () => {
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+      },
+      {
+        isConfigured: true,
+        loadPullRequestReviewContext: async () =>
+          createReviewContext({
+            attachedIssue: null,
+            attachedIssueReference: null,
+            issueSelectionRationale: null,
+            pullRequestBody: "No issue linked here.",
+          }),
+      },
+    );
+
+    expect(result).toEqual({
+      accepted: true,
+      code: "dry_run",
+      context: {
+        attachedIssueNumber: null,
+        changedFileCount: 1,
+        diffSnippetCount: 1,
+        existingFeedbackCommentId: null,
+        issueReferenceSource: null,
+      },
+      message:
+        "The testing agent loaded PR and issue review context in dry-run mode. No attached issue reference was found in the PR title or body, so the workflow exited safely.",
+      sourcePrNumber: 42,
+    });
+  });
+
   test("builds a safe structured workflow log entry", async () => {
     const event = createNormalizedEvent();
-    const result = await runGitHubTestingAgentWorkflow({
-      event,
-      mode: "dry-run",
-    });
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event,
+        mode: "dry-run",
+      },
+      {
+        loadPullRequestReviewContext: async () => createReviewContext(),
+      },
+    );
 
     const logEntry = createGitHubTestingAgentWorkflowLogEntry({
       event,
@@ -252,5 +366,30 @@ describe("github testing agent intake", () => {
       mode: "dry-run",
       sourcePrNumber: 42,
     });
+  });
+
+  test("parses issue references from title and body in priority order", () => {
+    const resolved = resolveAttachedIssueReference({
+      body: "Related work in #456 and resolves #789.",
+      repository: {
+        name: "repo",
+        owner: "acme",
+      },
+      title: "Fixes #123 testing agent context",
+    });
+
+    expect(resolved.reference).toEqual({
+      keyword: "fixes",
+      matchedText: "Fixes #123",
+      number: 123,
+      owner: "acme",
+      repo: "repo",
+      source: "title",
+    });
+    expect(resolved.references.map((reference) => reference.number)).toEqual([
+      123,
+      456,
+      789,
+    ]);
   });
 });

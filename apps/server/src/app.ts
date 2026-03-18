@@ -17,11 +17,15 @@ import type {
   PullRequestContextLoader,
 } from "@hackathon/github-doc-agent";
 import {
+  createGitHubAppPullRequestReviewContextLoader,
   createGitHubTestingAgentWorkflowLogEntry,
   normalizeGitHubTestingWebhookEvent,
   runGitHubTestingAgentWorkflow,
 } from "@hackathon/github-testing-agent";
-import type { GitHubTestingAgentWorkflowResult } from "@hackathon/github-testing-agent";
+import type {
+  GitHubTestingAgentWorkflowResult,
+  PullRequestReviewContextLoader,
+} from "@hackathon/github-testing-agent";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -45,6 +49,7 @@ interface CreateAppDependencies {
   normalizeGitHubWebhookEvent?: typeof normalizeGitHubWebhookEvent;
   pullRequestClassifier?: PullRequestClassifier;
   pullRequestContextLoader?: PullRequestContextLoader | null;
+  pullRequestReviewContextLoader?: PullRequestReviewContextLoader | null;
   pullRequestDocWriter?: PullRequestDocWriter;
   readGitHubWebhookHeaders?: typeof readGitHubWebhookHeaders;
   runGitHubDocAgentWorkflow?: typeof runGitHubDocAgentWorkflow;
@@ -101,6 +106,14 @@ export function createApp(
     dependencies.pullRequestContextLoader ??
     (appEnv.GITHUB_APP_ID && appEnv.GITHUB_APP_PRIVATE_KEY
       ? createGitHubAppPullRequestContextLoader({
+          appId: appEnv.GITHUB_APP_ID,
+          privateKey: appEnv.GITHUB_APP_PRIVATE_KEY,
+        })
+      : null);
+  const pullRequestReviewContextLoader =
+    dependencies.pullRequestReviewContextLoader ??
+    (appEnv.GITHUB_APP_ID && appEnv.GITHUB_APP_PRIVATE_KEY
+      ? createGitHubAppPullRequestReviewContextLoader({
           appId: appEnv.GITHUB_APP_ID,
           privateKey: appEnv.GITHUB_APP_PRIVATE_KEY,
         })
@@ -272,6 +285,7 @@ export function createApp(
         : {
             accepted: false,
             code: "workflow_not_configured",
+            context: null,
             message: testingNormalization.message,
             sourcePrNumber,
           };
@@ -312,7 +326,11 @@ export function createApp(
             mode: appEnv.GITHUB_TESTING_AGENT_MODE,
           },
           {
-            isConfigured: appEnv.GITHUB_TESTING_AGENT_ENABLED,
+            isConfigured:
+              appEnv.GITHUB_TESTING_AGENT_ENABLED &&
+              pullRequestReviewContextLoader !== null,
+            loadPullRequestReviewContext:
+              pullRequestReviewContextLoader ?? undefined,
           },
         );
       }

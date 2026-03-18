@@ -72,9 +72,71 @@ export interface GitHubTestingAgentWorkflowInput {
   mode?: "dry-run" | "live";
 }
 
+export interface TestingPullRequestChangedFile {
+  additions: number;
+  changeType: "added" | "modified" | "removed" | "renamed";
+  deletions: number;
+  path: string;
+  patch?: string;
+  previousPath?: string | null;
+}
+
+export interface PullRequestDiffSnippet {
+  path: string;
+  snippet: string;
+}
+
+export interface AttachedIssueReference {
+  keyword: "closes" | "fixes" | "reference" | "resolves";
+  matchedText: string;
+  number: number;
+  owner: string;
+  repo: string;
+  source: "body" | "title";
+}
+
+export interface IssueContext {
+  body: string;
+  htmlUrl: string;
+  number: number;
+  state: "closed" | "open" | "unknown";
+  title: string;
+}
+
+export interface ExistingIssueFeedbackComment {
+  authorLogin: string;
+  body: string;
+  commentId: number;
+  htmlUrl: string;
+}
+
+export interface PullRequestReviewContext {
+  attachedIssue: IssueContext | null;
+  attachedIssueReference: AttachedIssueReference | null;
+  changedFiles: TestingPullRequestChangedFile[];
+  diffSnippets: PullRequestDiffSnippet[];
+  existingFeedbackComment: ExistingIssueFeedbackComment | null;
+  issueSelectionRationale: string | null;
+  pullRequestBody: string;
+  pullRequestTitle: string;
+}
+
+export type PullRequestReviewContextLoader = (
+  event: NormalizedTestingPullRequestWebhookEvent,
+) => Promise<PullRequestReviewContext>;
+
 export interface GitHubTestingAgentWorkflowResult {
   accepted: boolean;
   code: "accepted" | "dry_run" | "workflow_not_configured";
+  context:
+    | null
+    | {
+        attachedIssueNumber: number | null;
+        changedFileCount: number;
+        diffSnippetCount: number;
+        existingFeedbackCommentId: number | null;
+        issueReferenceSource: "body" | "title" | null;
+      };
   message: string;
   sourcePrNumber: number;
 }
