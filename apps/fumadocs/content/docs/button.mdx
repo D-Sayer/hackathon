@@ -80,3 +80,43 @@ Use a button when the user is performing an action such as saving, confirming, d
 | `default`                               | Standard action layouts                  |
 | `lg`                                    | Prominent actions or spacious layouts    |
 | `icon`, `icon-xs`, `icon-sm`, `icon-lg` | Icon-only controls at matching densities |
+
+## PR #17 Documentation Update
+
+Source PR: [#17](https://github.com/D-Sayer/hackathon/pull/17) - Add warning variant to button component styles
+
+## PR Update: `warning` variant
+
+This update introduces a new `warning` variant to the `Button` component. The warning style is intended for high-attention actions that are potentially risky or require user awareness, but are not destructive.
+
+Use `warning` when:
+
+- The action may have side effects that require caution (for example, “Reset settings” or “Regenerate token”).
+- You need stronger emphasis than `secondary` or `outline`, but the outcome is not irreversible.
+- The action represents a temporary or recoverable risk state.
+
+Unlike `destructive`, the `warning` variant signals caution without implying permanent data loss.
+
+### Example
+
+```tsx
+import { Button } from "@/components/ui/button";
+
+export function WarningButtonExample() {
+  return <Button variant="warning">Reset configuration</Button>;
+}
+```
+
+### Updated supported variants
+
+| Variant       | Use case                                                   |
+| ------------- | ---------------------------------------------------------- |
+| `default`     | Primary actions and forward progress                       |
+| `outline`     | Secondary actions on quiet surfaces                        |
+| `secondary`   | Medium-emphasis actions with filled treatment              |
+| `ghost`       | Utility actions in dense or low-emphasis UI                |
+| `destructive` | Dangerous or irreversible actions                          |
+| `warning`     | Cautionary actions with potential side effects             |
+| `link`        | Inline or text-like actions                                |
+
+When adding a warning action to a layout, avoid pairing it directly next to a `destructive` action without clear labeling. Reserve the strongest visual emphasis for the most critical outcome in the group.
