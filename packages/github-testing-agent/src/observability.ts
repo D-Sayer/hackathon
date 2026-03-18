@@ -12,10 +12,16 @@ export function createGitHubTestingAgentWorkflowLogEntry(params: {
   return {
     accepted: params.result.accepted,
     action: params.event.action,
+    analysisShouldComment: params.result.analysis.shouldComment,
+    analysisSource: params.result.analysis.source,
+    attachedIssueNumber: params.result.context?.attachedIssueNumber ?? null,
     code: params.result.code,
+    confidence: params.result.analysis.confidence,
     deliveryId: params.event.deliveryId,
     eventName: params.event.eventName,
     mode: params.mode,
     sourcePrNumber: params.event.pullRequest.number,
+    wasModelSkipped: params.result.analysis.wasModelSkipped,
+    writebackStatus: params.result.writeback.status,
   };
 }

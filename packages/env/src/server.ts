@@ -25,6 +25,7 @@ export const env = createEnv({
       .default("false")
       .transform((value) => value === "true"),
     GITHUB_DOC_AGENT_MODE: z.enum(["dry-run", "live"]).default("dry-run"),
+    TESTING_AGENT_MODEL: z.string().min(1).optional(),
     GITHUB_TESTING_AGENT_ENABLED: z
       .enum(["true", "false"])
       .default("false")
