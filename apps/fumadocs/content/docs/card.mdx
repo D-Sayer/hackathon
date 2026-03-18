@@ -1,0 +1,68 @@
+---
+title: Card
+description: Composition, slot anatomy, and layout patterns for grouped content.
+---
+
+# Card
+
+The `Card` family provides a structured container for related content. Instead of a large prop API, it relies on composition: a root card plus named slots for title, description, actions, content, and footer.
+
+## Anatomy
+
+The exported building blocks are:
+
+<CardSlotsTable />
+
+<Guidance title="Composition model">
+  Reach for card slots before custom wrapper divs. The slot structure already encodes spacing, alignment, and footer behavior that keeps cards visually consistent across pages.
+</Guidance>
+
+## Standard structure
+
+This is the baseline composition for most dashboard, settings, and editorial surfaces.
+
+<CardStructureDemo />
+
+## Sizes
+
+The root `Card` supports `default` and `sm`. Use the default size for most layouts and reserve the small size for denser summaries or repeated list items.
+
+<CardSizeDemo />
+
+## Header actions
+
+`CardAction` gives you a stable area for lightweight actions or status controls without breaking the title and description rhythm.
+
+<CardActionDemo />
+
+## Media and footer patterns
+
+Cards can start with media and end with a footer action row while still using the same slot structure.
+
+<CardMediaDemo />
+
+## API
+
+<CardApiTable />
+
+## Usage guidance
+
+### Slot behavior
+
+- `CardHeader` controls top spacing and adapts when `CardAction` is present.
+- `CardContent` is the default body region for any custom layout.
+- `CardFooter` adds a top border and tighter alignment for persistent actions or summary metadata.
+
+### Size selection
+
+Choose one card size for a repeated collection whenever possible. Mixing densities inside the same list or dashboard section usually makes the layout feel inconsistent.
+
+### Accessibility
+
+- Use heading text inside `CardTitle` when the card introduces a distinct section of content.
+- Keep action labels specific so users can understand the card task without reading the entire body first.
+- Avoid turning the entire card into an interactive target unless the full surface is truly a single action.
+
+## Root props
+
+The root component accepts standard `div` props plus the `size` prop. Subcomponents accept standard `div` props and inherit spacing and alignment from the slot they represent.

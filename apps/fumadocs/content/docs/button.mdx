@@ -1,0 +1,82 @@
+---
+title: Button
+description: Variants, sizes, states, and usage guidance for primary action controls.
+---
+
+# Button
+
+The `Button` component is the shared action primitive for click, submit, and utility interactions. It is built on the Base UI button primitive and wrapped with a small variant and size API that keeps presentation consistent across apps.
+
+## When to use it
+
+- Use `default` for the primary action in a section or flow.
+- Use `outline` or `secondary` when an action is important but should not dominate the surface.
+- Use `ghost` for low-emphasis controls in dense interfaces like toolbars and list rows.
+- Use `destructive` when the consequence is irreversible or high risk.
+- Use `link` when the interaction should read like inline navigation rather than interface chrome.
+
+<ButtonVariantDemo />
+
+## Sizes
+
+Sizes change the button footprint, horizontal padding, and icon scale. Pick one size per region when possible so actions feel related.
+
+<ButtonSizeDemo />
+
+## Icons
+
+The component supports both icon-only buttons and inline icons paired with text. Icon-only buttons must always include an accessible label such as `aria-label`.
+
+<ButtonIconDemo />
+
+<Guidance title="Icon usage">
+  Reserve icon-only buttons for universally recognizable actions such as copy, settings, or open notifications. If the meaning might be ambiguous, pair the icon with visible text instead.
+</Guidance>
+
+## States
+
+Disabled buttons preserve layout and visual hierarchy while removing interaction. Use disabled states when the action will become available after a valid prerequisite, not as a replacement for error feedback.
+
+<ButtonStateDemo />
+
+## API
+
+<ButtonApiTable />
+
+## Usage guidance
+
+### Links vs buttons
+
+Use a button when the user is performing an action such as saving, confirming, deleting, or triggering UI behavior. Use `variant="link"` when the interaction should visually read like text, but keep semantic intent aligned with the underlying element you render.
+
+### Class extension
+
+`className` is merged into the generated class recipe. That makes it appropriate for layout adjustments, width constraints, or narrow visual tweaks, but variant and size should remain the primary customization path.
+
+### Accessibility
+
+- Provide explicit, action-oriented labels.
+- Ensure icon-only usage includes `aria-label`.
+- Keep disabled buttons discoverable, but pair them with nearby explanation when the reason is not obvious.
+- Preserve a clear focus state and avoid wrapping buttons in additional interactive parents.
+
+## Supported variants
+
+| Variant | Use case |
+| --- | --- |
+| `default` | Primary actions and forward progress |
+| `outline` | Secondary actions on quiet surfaces |
+| `secondary` | Medium-emphasis actions with filled treatment |
+| `ghost` | Utility actions in dense or low-emphasis UI |
+| `destructive` | Dangerous or irreversible actions |
+| `link` | Inline or text-like actions |
+
+## Supported sizes
+
+| Size | Use case |
+| --- | --- |
+| `xs` | Very dense utility rows |
+| `sm` | Compact forms and supporting actions |
+| `default` | Standard action layouts |
+| `lg` | Prominent actions or spacious layouts |
+| `icon`, `icon-xs`, `icon-sm`, `icon-lg` | Icon-only controls at matching densities |
