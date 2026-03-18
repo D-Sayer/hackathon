@@ -60,3 +60,10 @@ export {
   ToasterUsageGuidance,
 } from "@/components/docs/feedback-docs";
 export { ComponentGrid, Guidance } from "@/components/docs/shared";
+export {
+  SpinnerApiTable,
+  SpinnerBasicDemo,
+  SpinnerButtonDemo,
+  SpinnerColorDemo,
+  SpinnerSizeDemo,
+} from "@/components/docs/spinner-docs";

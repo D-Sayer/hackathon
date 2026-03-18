@@ -42,7 +42,7 @@ export default function HomePage() {
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
               Components
             </p>
-            <p className="mt-3 text-3xl font-semibold">17</p>
+            <p className="mt-3 text-3xl font-semibold">19</p>
           </div>
           <div className="border border-border/80 bg-card p-5 text-card-foreground shadow-sm">
             <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">

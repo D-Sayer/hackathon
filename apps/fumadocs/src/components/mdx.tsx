@@ -55,6 +55,11 @@ import {
   CardStructureDemo,
   ComponentGrid,
   Guidance,
+  SpinnerApiTable,
+  SpinnerBasicDemo,
+  SpinnerButtonDemo,
+  SpinnerColorDemo,
+  SpinnerSizeDemo,
 } from "@/components/docs";
 
 export function getMDXComponents(components?: MDXComponents) {
@@ -113,6 +118,11 @@ export function getMDXComponents(components?: MDXComponents) {
     CardStructureDemo,
     ComponentGrid,
     Guidance,
+    SpinnerApiTable,
+    SpinnerBasicDemo,
+    SpinnerButtonDemo,
+    SpinnerColorDemo,
+    SpinnerSizeDemo,
     ...components,
   } satisfies MDXComponents;
 }

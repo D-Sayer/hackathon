@@ -1,0 +1,62 @@
+---
+title: Spinner
+description: Animated loading indicator for indeterminate async operations.
+---
+
+The `Spinner` component is a lightweight animated icon that signals an indeterminate loading state. It renders a rotating `Loader2` icon from lucide-react and exposes the full SVG prop surface so it composes naturally with buttons, forms, and inline layouts.
+
+## When to use it
+
+- Use as a standalone indicator when a region or page is loading.
+- Pair with a `Button` to communicate that an async action is in progress.
+- Use in form fields or list rows to show per-item loading without disrupting layout.
+- Prefer a skeleton when the approximated shape of the content matters for perceived performance.
+
+<SpinnerBasicDemo />
+
+## Sizes
+
+The default size is `size-4` (16 px). Pass any Tailwind size utility through `className` to scale the spinner up or down without breaking animation.
+
+<SpinnerSizeDemo />
+
+## Colors
+
+The spinner inherits its stroke color from the current `color` (via `currentColor`), so standard Tailwind `text-*` utilities control the appearance.
+
+<SpinnerColorDemo />
+
+## Inside a button
+
+Combine the spinner with a `disabled` `Button` to indicate a pending action. Keep the button label present so users understand what action is in progress.
+
+<SpinnerButtonDemo />
+
+<Guidance title="Loading button usage">
+  Disable the button while the action is pending to prevent duplicate
+  submissions. Always keep a visible label alongside the spinner so the purpose
+  of the action remains clear.
+</Guidance>
+
+## API
+
+<SpinnerApiTable />
+
+## Usage guidance
+
+### Accessible labels
+
+The spinner ships with `role="status"` and `aria-label="Loading"` so screen readers announce it automatically. Override `aria-label` when the context needs a more precise description, for example `"Saving changes"` or `"Fetching results"`.
+
+### Stopping the animation
+
+If you need to halt the spin (for example, to swap to a success icon), remove the `animate-spin` class by passing a replacement `className`. Because `cn` merges classes, you can also conditionally apply `animate-spin` in the consuming component.
+
+### Spinner vs skeleton
+
+| Scenario                               | Recommendation                    |
+| -------------------------------------- | --------------------------------- |
+| Unknown content shape or duration      | Spinner                           |
+| Known content shape (text, cards)      | Skeleton                          |
+| Button submitting an async action      | Spinner inside a disabled button  |
+| Full-page data load with visible shell | Skeleton placeholders per section |
