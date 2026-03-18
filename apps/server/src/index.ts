@@ -212,7 +212,7 @@ app.post("/ai", async (c) => {
   const body = await c.req.json();
   const uiMessages = body.messages || [];
   const model = wrapLanguageModel({
-    model: openai("gpt-4.1-2025-04-14"),
+    model: openai("gpt-5.2-chat-latest"),
     middleware: devToolsMiddleware(),
   });
 
