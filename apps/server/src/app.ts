@@ -18,12 +18,14 @@ import type {
 } from "@hackathon/github-doc-agent";
 import {
   createGitHubAppPullRequestReviewContextLoader,
+  createGitHubAppIssueCommentWritebackClient,
   createGitHubTestingAgentWorkflowLogEntry,
   normalizeGitHubTestingWebhookEvent,
   runGitHubTestingAgentWorkflow,
 } from "@hackathon/github-testing-agent";
 import type {
   GitHubTestingAgentWorkflowResult,
+  IssueCommentWritebackClient,
   PullRequestReviewAnalyzer,
   PullRequestReviewContextLoader,
 } from "@hackathon/github-testing-agent";
@@ -56,6 +58,7 @@ interface CreateAppDependencies {
   readGitHubWebhookHeaders?: typeof readGitHubWebhookHeaders;
   runGitHubDocAgentWorkflow?: typeof runGitHubDocAgentWorkflow;
   runGitHubTestingAgentWorkflow?: typeof runGitHubTestingAgentWorkflow;
+  testingIssueCommentClient?: IssueCommentWritebackClient;
   verifyGitHubWebhookSignature?: typeof verifyGitHubWebhookSignature;
 }
 
@@ -120,6 +123,14 @@ export function createApp(
           privateKey: appEnv.GITHUB_APP_PRIVATE_KEY,
         })
       : null);
+  const testingIssueCommentClient =
+    dependencies.testingIssueCommentClient ??
+    (appEnv.GITHUB_APP_ID && appEnv.GITHUB_APP_PRIVATE_KEY
+      ? createGitHubAppIssueCommentWritebackClient({
+          appId: appEnv.GITHUB_APP_ID,
+          privateKey: appEnv.GITHUB_APP_PRIVATE_KEY,
+        })
+      : undefined);
   const readWebhookHeaders =
     dependencies.readGitHubWebhookHeaders ?? readGitHubWebhookHeaders;
   const runDocsWorkflow =
@@ -303,6 +314,12 @@ export function createApp(
             context: null,
             message: testingNormalization.message,
             sourcePrNumber,
+            writeback: {
+              commentId: null,
+              errorMessage: null,
+              renderedBody: null,
+              status: "skipped",
+            },
           };
 
     try {
@@ -345,6 +362,7 @@ export function createApp(
             isConfigured:
               appEnv.GITHUB_TESTING_AGENT_ENABLED &&
               pullRequestReviewContextLoader !== null,
+            issueCommentClient: testingIssueCommentClient,
             loadPullRequestReviewContext:
               pullRequestReviewContextLoader ?? undefined,
           },
@@ -393,9 +411,6 @@ export function createApp(
       );
     }
 
-    const status =
-      docsWorkflowResult.accepted || testingWorkflowResult?.accepted ? 202 : 503;
-
     return c.json(
       {
         deliveryId: headers.deliveryId,
@@ -405,7 +420,7 @@ export function createApp(
           ? testingWorkflowResult
           : testingNormalization,
       },
-      status,
+      202,
     );
   });
 

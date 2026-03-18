@@ -1,8 +1,10 @@
 import { createSign } from "node:crypto";
 
+import { findMatchingIssueFeedbackComment } from "./issue-comment";
 import { resolveAttachedIssueReference, selectReviewDiffSnippets } from "./context";
 import type {
   ExistingIssueFeedbackComment,
+  IssueCommentWritebackClient,
   IssueContext,
   NormalizedTestingPullRequestWebhookEvent,
   PullRequestReviewContext,
@@ -280,37 +282,30 @@ function isBotComment(comment: GitHubIssueCommentResponse): boolean {
   return type === "Bot" || login.endsWith("[bot]");
 }
 
+function mapIssueComment(
+  comment: GitHubIssueCommentResponse,
+): ExistingIssueFeedbackComment {
+  return {
+    authorLogin: readString(comment.user?.login),
+    body: readString(comment.body),
+    commentId: readNumber(comment.id),
+    htmlUrl: readString(comment.html_url),
+  };
+}
+
 function findExistingIssueFeedbackComment(params: {
   comments: GitHubIssueCommentResponse[];
   event: NormalizedTestingPullRequestWebhookEvent;
 }): ExistingIssueFeedbackComment | null {
-  const markerByNumber = `<!-- github-testing-agent:source-pr-number=${params.event.pullRequest.number} -->`;
-  const markerByUrl = `<!-- github-testing-agent:source-pr-url=${params.event.pullRequest.htmlUrl} -->`;
+  const botComments = params.comments
+    .filter((comment) => isBotComment(comment))
+    .map(mapIssueComment);
 
-  for (const comment of params.comments) {
-    if (!isBotComment(comment)) {
-      continue;
-    }
-
-    const body = readString(comment.body);
-
-    if (
-      !body.includes(markerByNumber) &&
-      !body.includes(markerByUrl) &&
-      !body.includes(params.event.pullRequest.htmlUrl)
-    ) {
-      continue;
-    }
-
-    return {
-      authorLogin: readString(comment.user?.login),
-      body,
-      commentId: readNumber(comment.id),
-      htmlUrl: readString(comment.html_url),
-    };
-  }
-
-  return null;
+  return findMatchingIssueFeedbackComment({
+    comments: botComments,
+    sourcePrNumber: params.event.pullRequest.number,
+    sourcePrUrl: params.event.pullRequest.htmlUrl,
+  });
 }
 
 async function getAttachedIssue(params: {
@@ -358,6 +353,89 @@ async function getIssueComments(params: {
   }
 
   return comments;
+}
+
+async function createIssueComment(params: {
+  apiClient: ReturnType<typeof createGitHubAppApiClient>;
+  body: string;
+  issueNumber: number;
+  repository: NormalizedTestingPullRequestWebhookEvent["repository"];
+}): Promise<ExistingIssueFeedbackComment> {
+  const response = await params.apiClient.requestJson<GitHubIssueCommentResponse>({
+    auth: "installation",
+    init: {
+      body: JSON.stringify({
+        body: params.body,
+      }),
+      method: "POST",
+    },
+    pathname: `/repos/${params.repository.owner}/${params.repository.name}/issues/${params.issueNumber}/comments`,
+  });
+
+  return mapIssueComment(response);
+}
+
+async function updateIssueComment(params: {
+  apiClient: ReturnType<typeof createGitHubAppApiClient>;
+  body: string;
+  commentId: number;
+  repository: NormalizedTestingPullRequestWebhookEvent["repository"];
+}): Promise<ExistingIssueFeedbackComment> {
+  const response = await params.apiClient.requestJson<GitHubIssueCommentResponse>({
+    auth: "installation",
+    init: {
+      body: JSON.stringify({
+        body: params.body,
+      }),
+      method: "PATCH",
+    },
+    pathname: `/repos/${params.repository.owner}/${params.repository.name}/issues/comments/${params.commentId}`,
+  });
+
+  return mapIssueComment(response);
+}
+
+export function createGitHubAppIssueCommentWritebackClient(params: {
+  appId: string;
+  fetch?: FetchLike;
+  privateKey: string;
+}): IssueCommentWritebackClient {
+  function createApiClient(event: NormalizedTestingPullRequestWebhookEvent) {
+    return createGitHubAppApiClient({
+      appId: params.appId,
+      fetch: params.fetch,
+      installationId: assertInstallationId(event),
+      privateKey: params.privateKey,
+    });
+  }
+
+  return {
+    async createIssueComment(input) {
+      return createIssueComment({
+        apiClient: createApiClient(input.event),
+        body: input.body,
+        issueNumber: input.issueNumber,
+        repository: input.event.repository,
+      });
+    },
+    async listIssueComments(input) {
+      const comments = await getIssueComments({
+        apiClient: createApiClient(input.event),
+        issueNumber: input.issueNumber,
+        repository: input.event.repository,
+      });
+
+      return comments.filter(isBotComment).map(mapIssueComment);
+    },
+    async updateIssueComment(input) {
+      return updateIssueComment({
+        apiClient: createApiClient(input.event),
+        body: input.body,
+        commentId: input.commentId,
+        repository: input.event.repository,
+      });
+    },
+  };
 }
 
 export function createGitHubAppPullRequestReviewContextLoader(params: {

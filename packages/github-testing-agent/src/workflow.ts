@@ -1,7 +1,14 @@
 import { evaluatePullRequestReviewHeuristics } from "./analyze-review";
+import {
+  createSkippedWritebackResult,
+  findMatchingIssueFeedbackComment,
+  renderIssueFeedbackComment,
+} from "./issue-comment";
 import type {
   GitHubTestingAgentWorkflowInput,
   GitHubTestingAgentWorkflowResult,
+  IssueCommentWritebackClient,
+  IssueFeedbackCommentRenderer,
   PullRequestReviewAnalysis,
   PullRequestReviewAnalysisSource,
   PullRequestReviewAnalyzer,
@@ -10,9 +17,12 @@ import type {
 } from "./types";
 
 export interface GitHubTestingAgentWorkflowDependencies {
+  agentIdentity?: string;
   analyzer?: PullRequestReviewAnalyzer;
   isConfigured?: boolean;
+  issueCommentClient?: IssueCommentWritebackClient;
   loadPullRequestReviewContext?: PullRequestReviewContextLoader;
+  renderIssueFeedbackComment?: IssueFeedbackCommentRenderer;
 }
 
 function createFallbackAnalysis(params: {
@@ -40,6 +50,7 @@ function buildWorkflowMessage(params: {
   context: PullRequestReviewContext;
   mode: "dry-run" | "live";
   source: PullRequestReviewAnalysisSource;
+  writeback: GitHubTestingAgentWorkflowResult["writeback"];
 }): string {
   const prefix =
     params.mode === "live"
@@ -56,8 +67,20 @@ function buildWorkflowMessage(params: {
   const existingCommentMessage = params.context.existingFeedbackComment
     ? ` Existing feedback comment ${params.context.existingFeedbackComment.commentId} was found on the issue.`
     : "";
+  const writebackMessage =
+    params.writeback.status === "created"
+      ? ` Created issue feedback comment ${params.writeback.commentId}.`
+      : params.writeback.status === "updated"
+        ? ` Updated issue feedback comment ${params.writeback.commentId}.`
+        : params.writeback.status === "unchanged"
+          ? " Existing issue feedback comment was already up to date."
+          : params.writeback.status === "dry_run"
+            ? " Rendered the issue feedback comment in dry-run mode without writing to GitHub."
+            : params.writeback.status === "failed"
+              ? ` Issue comment writeback failed: ${params.writeback.errorMessage}`
+              : "";
 
-  return `${prefix} ${decision} Decision source: ${params.source}.${attachedIssueMessage}${existingCommentMessage}`;
+  return `${prefix} ${decision} Decision source: ${params.source}.${attachedIssueMessage}${existingCommentMessage}${writebackMessage}`;
 }
 
 export async function runGitHubTestingAgentWorkflow(
@@ -65,6 +88,7 @@ export async function runGitHubTestingAgentWorkflow(
   dependencies: GitHubTestingAgentWorkflowDependencies = {},
 ): Promise<GitHubTestingAgentWorkflowResult> {
   const mode = input.mode ?? "dry-run";
+  const agentIdentity = dependencies.agentIdentity ?? "github-testing-agent";
 
   if (dependencies.isConfigured === false) {
     return {
@@ -81,6 +105,7 @@ export async function runGitHubTestingAgentWorkflow(
       message:
         "The testing agent intake is wired, but the workflow is not enabled yet.",
       sourcePrNumber: input.event.pullRequest.number,
+      writeback: createSkippedWritebackResult("skipped", null),
     };
   }
 
@@ -99,6 +124,7 @@ export async function runGitHubTestingAgentWorkflow(
       message:
         "The testing agent workflow needs a PR and issue context loader before review can run.",
       sourcePrNumber: input.event.pullRequest.number,
+      writeback: createSkippedWritebackResult("skipped", null),
     };
   }
 
@@ -141,6 +167,90 @@ export async function runGitHubTestingAgentWorkflow(
     wasModelSkipped = true;
   }
 
+  let writeback: GitHubTestingAgentWorkflowResult["writeback"] =
+    createSkippedWritebackResult("not_needed", null);
+
+  if (analysis.shouldComment && context.attachedIssue) {
+    try {
+      const renderedComment = (
+        dependencies.renderIssueFeedbackComment ?? renderIssueFeedbackComment
+      )({
+        agentIdentity,
+        analysis,
+        attachedIssue: context.attachedIssue,
+        sourcePullRequest: input.event.pullRequest,
+      });
+
+      if (mode === "dry-run") {
+        writeback = createSkippedWritebackResult("dry_run", renderedComment.body);
+      } else if (!dependencies.issueCommentClient) {
+        writeback = {
+          commentId: null,
+          errorMessage:
+            "Issue comment writeback is not configured for live mode.",
+          renderedBody: renderedComment.body,
+          status: "failed",
+        };
+      } else {
+        const latestComments = await dependencies.issueCommentClient.listIssueComments({
+          event: input.event,
+          issueNumber: context.attachedIssue.number,
+        });
+        const existingComment = findMatchingIssueFeedbackComment({
+          agentIdentity,
+          comments: latestComments,
+          sourcePrNumber: input.event.pullRequest.number,
+          sourcePrUrl: input.event.pullRequest.htmlUrl,
+        });
+
+        if (existingComment && existingComment.body === renderedComment.body) {
+          writeback = {
+            commentId: existingComment.commentId,
+            errorMessage: null,
+            renderedBody: renderedComment.body,
+            status: "unchanged",
+          };
+        } else if (existingComment) {
+          const updatedComment =
+            await dependencies.issueCommentClient.updateIssueComment({
+              body: renderedComment.body,
+              commentId: existingComment.commentId,
+              event: input.event,
+            });
+
+          writeback = {
+            commentId: updatedComment.commentId,
+            errorMessage: null,
+            renderedBody: renderedComment.body,
+            status: "updated",
+          };
+        } else {
+          const createdComment =
+            await dependencies.issueCommentClient.createIssueComment({
+              body: renderedComment.body,
+              event: input.event,
+              issueNumber: context.attachedIssue.number,
+            });
+
+          writeback = {
+            commentId: createdComment.commentId,
+            errorMessage: null,
+            renderedBody: renderedComment.body,
+            status: "created",
+          };
+        }
+      }
+    } catch (error) {
+      writeback = {
+        commentId: null,
+        errorMessage:
+          error instanceof Error ? error.message : "Unknown writeback error.",
+        renderedBody: null,
+        status: "failed",
+      };
+    }
+  }
+
   return {
     accepted: true,
     analysis: {
@@ -162,7 +272,9 @@ export async function runGitHubTestingAgentWorkflow(
       context,
       mode,
       source,
+      writeback,
     }),
     sourcePrNumber: input.event.pullRequest.number,
+    writeback,
   };
 }

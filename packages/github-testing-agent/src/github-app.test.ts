@@ -1,7 +1,10 @@
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, test } from "bun:test";
 
-import { createGitHubAppPullRequestReviewContextLoader } from "./index";
+import {
+  createGitHubAppIssueCommentWritebackClient,
+  createGitHubAppPullRequestReviewContextLoader,
+} from "./index";
 import type { NormalizedTestingPullRequestWebhookEvent } from "./index";
 
 const { privateKey } = generateKeyPairSync("rsa", {
@@ -370,5 +373,160 @@ describe("github testing agent review context loader", () => {
     expect(context.attachedIssue).toBeNull();
     expect(context.issueSelectionRationale).toBeNull();
     expect(context.existingFeedbackComment).toBeNull();
+  });
+
+  test("lists bot issue comments for writeback", async () => {
+    const client = createGitHubAppIssueCommentWritebackClient({
+      appId: "123",
+      fetch: createMockFetch([
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("POST");
+            expect(url).toContain("/app/installations/99/access_tokens");
+          },
+          response: createJsonResponse({
+            expires_at: "2099-03-18T01:00:00.000Z",
+            token: "installation-token",
+          }),
+        },
+        {
+          assert: ({ url }) => {
+            expect(url).toContain("/repos/acme/repo/issues/123/comments");
+            expect(url).toContain("page=1");
+          },
+          response: createJsonResponse([
+            {
+              body: "Human comment",
+              html_url: "https://github.com/acme/repo/issues/123#issuecomment-1",
+              id: 1,
+              user: {
+                login: "octocat",
+                type: "User",
+              },
+            },
+            {
+              body:
+                "<!-- github-testing-agent:agent=github-testing-agent;source-pr-number=42 -->\nBody",
+              html_url: "https://github.com/acme/repo/issues/123#issuecomment-2",
+              id: 2,
+              user: {
+                login: "hackathon-testing-agent[bot]",
+                type: "Bot",
+              },
+            },
+          ]),
+        },
+      ]),
+      privateKey: privateKey.export({
+        format: "pem",
+        type: "pkcs1",
+      }).toString(),
+    });
+
+    const comments = await client.listIssueComments({
+      event,
+      issueNumber: 123,
+    });
+
+    expect(comments).toEqual([
+      {
+        authorLogin: "hackathon-testing-agent[bot]",
+        body:
+          "<!-- github-testing-agent:agent=github-testing-agent;source-pr-number=42 -->\nBody",
+        commentId: 2,
+        htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-2",
+      },
+    ]);
+  });
+
+  test("creates and updates issue comments for writeback", async () => {
+    const client = createGitHubAppIssueCommentWritebackClient({
+      appId: "123",
+      fetch: createMockFetch([
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("POST");
+            expect(url).toContain("/app/installations/99/access_tokens");
+          },
+          response: createJsonResponse({
+            expires_at: "2099-03-18T01:00:00.000Z",
+            token: "installation-token",
+          }),
+        },
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("POST");
+            expect(url).toContain("/repos/acme/repo/issues/123/comments");
+            expect(init?.body).toBe(
+              JSON.stringify({
+                body: "Created body",
+              }),
+            );
+          },
+          response: createJsonResponse({
+            body: "Created body",
+            html_url: "https://github.com/acme/repo/issues/123#issuecomment-3",
+            id: 3,
+            user: {
+              login: "hackathon-testing-agent[bot]",
+              type: "Bot",
+            },
+          }),
+        },
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("POST");
+            expect(url).toContain("/app/installations/99/access_tokens");
+          },
+          response: createJsonResponse({
+            expires_at: "2099-03-18T01:00:00.000Z",
+            token: "installation-token",
+          }),
+        },
+        {
+          assert: ({ init, url }) => {
+            expect(init?.method).toBe("PATCH");
+            expect(url).toContain("/repos/acme/repo/issues/comments/3");
+            expect(init?.body).toBe(
+              JSON.stringify({
+                body: "Updated body",
+              }),
+            );
+          },
+          response: createJsonResponse({
+            body: "Updated body",
+            html_url: "https://github.com/acme/repo/issues/123#issuecomment-3",
+            id: 3,
+            user: {
+              login: "hackathon-testing-agent[bot]",
+              type: "Bot",
+            },
+          }),
+        },
+      ]),
+      privateKey: privateKey.export({
+        format: "pem",
+        type: "pkcs1",
+      }).toString(),
+    });
+
+    const created = await client.createIssueComment({
+      body: "Created body",
+      event,
+      issueNumber: 123,
+    });
+    const updated = await client.updateIssueComment({
+      body: "Updated body",
+      commentId: 3,
+      event,
+    });
+
+    expect(created.commentId).toBe(3);
+    expect(updated).toEqual({
+      authorLogin: "hackathon-testing-agent[bot]",
+      body: "Updated body",
+      commentId: 3,
+      htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-3",
+    });
   });
 });

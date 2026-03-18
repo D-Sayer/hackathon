@@ -12,8 +12,11 @@ import {
 } from "./__fixtures__/review-analysis";
 import type { NormalizedTestingPullRequestWebhookEvent } from "./index";
 import {
+  createAiPullRequestReviewAnalyzer,
+  createIssueFeedbackCommentMarker,
   createGitHubTestingAgentWorkflowLogEntry,
   evaluatePullRequestReviewHeuristics,
+  renderIssueFeedbackComment,
   normalizeGitHubTestingWebhookEvent,
   readGitHubWebhookHeaders,
   resolveAttachedIssueReference,
@@ -226,8 +229,16 @@ describe("github testing agent intake", () => {
       existingFeedbackCommentId: null,
       issueReferenceSource: "body",
     });
+    expect(result.writeback.status).toBe("dry_run");
+    expect(result.writeback.renderedBody).not.toBeNull();
+    expect(result.writeback.renderedBody!).toContain("## Summary");
+    expect(result.writeback.renderedBody!).toContain(
+      createIssueFeedbackCommentMarker({
+        sourcePrNumber: 42,
+      }),
+    );
     expect(result.message).toBe(
-      "Review analysis completed in dry-run mode for the testing agent. Actionable issue follow-up was identified. Decision source: fallback. Attached issue #123 was loaded from the body.",
+      "Review analysis completed in dry-run mode for the testing agent. Actionable issue follow-up was identified. Decision source: fallback. Attached issue #123 was loaded from the body. Rendered the issue feedback comment in dry-run mode without writing to GitHub.",
     );
   });
 
@@ -263,6 +274,12 @@ describe("github testing agent intake", () => {
       message:
         "The testing agent intake is wired, but the workflow is not enabled yet.",
       sourcePrNumber: 42,
+      writeback: {
+        commentId: null,
+        errorMessage: null,
+        renderedBody: null,
+        status: "skipped",
+      },
     });
   });
 
@@ -298,6 +315,12 @@ describe("github testing agent intake", () => {
       message:
         "The testing agent workflow needs a PR and issue context loader before review can run.",
       sourcePrNumber: 42,
+      writeback: {
+        commentId: null,
+        errorMessage: null,
+        renderedBody: null,
+        status: "skipped",
+      },
     });
   });
 
@@ -347,6 +370,12 @@ describe("github testing agent intake", () => {
       existingFeedbackCommentId: null,
       issueReferenceSource: null,
     });
+    expect(result.writeback).toEqual({
+      commentId: null,
+      errorMessage: null,
+      renderedBody: null,
+      status: "not_needed",
+    });
   });
 
   test("builds a safe structured workflow log entry", async () => {
@@ -380,6 +409,7 @@ describe("github testing agent intake", () => {
       mode: "dry-run",
       sourcePrNumber: 42,
       wasModelSkipped: true,
+      writebackStatus: "dry_run",
     });
   });
 
@@ -559,5 +589,318 @@ describe("github testing agent intake", () => {
       "Environment validation and deployment configuration both need verification before rollout.",
     ]);
     expect(result.analysis.shouldComment).toBe(true);
+  });
+
+  test("uses the AI SDK review analyzer helper with structured output", async () => {
+    const analyzer = createAiPullRequestReviewAnalyzer({
+      model: {
+        doGenerate: async () => ({
+          finishReason: "stop",
+          rawCall: { rawPrompt: null, rawSettings: {} },
+          response: {
+            headers: {},
+            id: "response-1",
+            messages: [],
+            modelId: "test-model",
+            timestamp: new Date("2026-03-18T00:00:00.000Z"),
+          },
+          text: JSON.stringify({
+            blastRadius: ["Shared server routes may be affected."],
+            confidence: "medium",
+            implementationGaps: [
+              "Stable issue comment writeback is still missing.",
+            ],
+            oversights: ["No rerun test was added for existing issue comments."],
+            rationale: "The linked issue remains only partially complete.",
+            shouldComment: true,
+            summary: "The PR adds analysis but still leaves follow-up work.",
+            testingNotes: ["Add a regression test for rerun idempotency."],
+          }),
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        }),
+        doStream: async () => {
+          throw new Error("Streaming is not expected in this test.");
+        },
+        modelId: "test-model",
+        provider: "test-provider",
+        specificationVersion: "v2",
+      } as never,
+    });
+
+    const result = await analyzer({
+      context: featureReviewContextFixture,
+      diffSnippets: featureReviewContextFixture.diffSnippets,
+      filteredChangedFiles: featureReviewContextFixture.changedFiles.map(
+        (file) => file.path,
+      ),
+    });
+
+    expect(result).toEqual({
+      blastRadius: ["Shared server routes may be affected."],
+      confidence: "medium",
+      implementationGaps: ["Stable issue comment writeback is still missing."],
+      oversights: ["No rerun test was added for existing issue comments."],
+      rationale: "The linked issue remains only partially complete.",
+      shouldComment: true,
+      summary: "The PR adds analysis but still leaves follow-up work.",
+      testingNotes: ["Add a regression test for rerun idempotency."],
+    });
+  });
+
+  test("renders a stable issue comment body", () => {
+    const rendered = renderIssueFeedbackComment({
+      agentIdentity: "github-testing-agent",
+      analysis: {
+        blastRadius: ["Shared workflow and server entrypoints are affected."],
+        confidence: "medium",
+        implementationGaps: ["Comment writeback still needs live coverage."],
+        oversights: ["No regression test covers reruns yet."],
+        rationale: "The issue remains partially complete.",
+        shouldComment: true,
+        summary: "The workflow is closer, but the linked issue is not done yet.",
+        testingNotes: ["Add a rerun test for existing bot comments."],
+      },
+      attachedIssue: featureReviewContextFixture.attachedIssue!,
+      sourcePullRequest: createNormalizedEvent().pullRequest,
+    });
+
+    expect(rendered.marker).toBe(
+      "<!-- github-testing-agent:agent=github-testing-agent;source-pr-number=42 -->",
+    );
+    expect(rendered.body).toContain("## Summary");
+    expect(rendered.body).toContain("## Implementation Gaps");
+    expect(rendered.body).toContain("## Source Pull Request");
+    expect(rendered.body).toContain(
+      "[#42 Add the first testing agent intake slice.](https://github.com/acme/repo/pull/42)",
+    );
+  });
+
+  test("creates a bot comment when no matching issue comment exists", async () => {
+    const listCalls: number[] = [];
+    const createCalls: string[] = [];
+    const updateCalls: number[] = [];
+
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async ({ body }) => {
+            createCalls.push(body);
+
+            return {
+              authorLogin: "hackathon-testing-agent[bot]",
+              body,
+              commentId: 7001,
+              htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-7001",
+            };
+          },
+          listIssueComments: async ({ issueNumber }) => {
+            listCalls.push(issueNumber);
+
+            return [];
+          },
+          updateIssueComment: async ({ commentId }) => {
+            updateCalls.push(commentId);
+            throw new Error("Should not update");
+          },
+        },
+        loadPullRequestReviewContext: async () => featureReviewContextFixture,
+      },
+    );
+
+    expect(listCalls).toEqual([123]);
+    expect(createCalls).toHaveLength(1);
+    const createdBody = createCalls[0];
+
+    if (!createdBody) {
+      throw new Error("Expected a created comment body.");
+    }
+
+    expect(createdBody).toContain("## Summary");
+    expect(updateCalls).toEqual([]);
+    expect(result.writeback).toEqual({
+      commentId: 7001,
+      errorMessage: null,
+      renderedBody: createdBody,
+      status: "created",
+    });
+    expect(result.message).toContain("Created issue feedback comment 7001.");
+  });
+
+  test("updates an existing bot comment on rerun", async () => {
+    const updatedBodies: string[] = [];
+
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async () => {
+            throw new Error("Should not create");
+          },
+          listIssueComments: async () => [
+            {
+              authorLogin: "hackathon-testing-agent[bot]",
+              body:
+                "<!-- github-testing-agent:source-pr-number=42 -->\nOld body",
+              commentId: 7002,
+              htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-7002",
+            },
+          ],
+          updateIssueComment: async ({ body, commentId }) => {
+            updatedBodies.push(body);
+
+            return {
+              authorLogin: "hackathon-testing-agent[bot]",
+              body,
+              commentId,
+              htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-7002",
+            };
+          },
+        },
+        loadPullRequestReviewContext: async () => featureReviewContextFixture,
+      },
+    );
+
+    expect(updatedBodies).toHaveLength(1);
+    expect(result.writeback.status).toBe("updated");
+    expect(result.writeback.commentId).toBe(7002);
+    expect(result.message).toContain("Updated issue feedback comment 7002.");
+  });
+
+  test("skips writeback when shouldComment is false", async () => {
+    let listCalled = false;
+
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async () => {
+            throw new Error("Should not create");
+          },
+          listIssueComments: async () => {
+            listCalled = true;
+            return [];
+          },
+          updateIssueComment: async () => {
+            throw new Error("Should not update");
+          },
+        },
+        loadPullRequestReviewContext: async () => docsOnlyReviewContextFixture,
+      },
+    );
+
+    expect(listCalled).toBe(false);
+    expect(result.writeback).toEqual({
+      commentId: null,
+      errorMessage: null,
+      renderedBody: null,
+      status: "not_needed",
+    });
+  });
+
+  test("skips updating when the rendered body is unchanged", async () => {
+    const rendered = renderIssueFeedbackComment({
+      agentIdentity: "github-testing-agent",
+      analysis: {
+        blastRadius: [
+          "Changed surface: packages/github-testing-agent/src/workflow.ts",
+          "Changed surface: apps/server/src/app.ts",
+          "Changed surface: packages/github-testing-agent/src/workflow.test.ts",
+        ],
+        confidence: "low",
+        implementationGaps: [
+          "Review the linked issue against the touched code paths to confirm the shipped scope fully matches the requested outcome.",
+        ],
+        oversights: [],
+        rationale:
+          "Positive implementation signals were found, but no AI review analyzer is configured. Falling back to a conservative should-comment decision.",
+        shouldComment: true,
+        summary:
+          "Potential implementation or testing follow-up is likely, but no AI review analyzer is configured to summarize the findings precisely.",
+        testingNotes: [
+          "Validate the touched server, web, and shared package changes with focused tests or manual verification before closing the linked issue.",
+        ],
+      },
+      attachedIssue: featureReviewContextFixture.attachedIssue!,
+      sourcePullRequest: createNormalizedEvent().pullRequest,
+    });
+    let updateCalled = false;
+
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async () => {
+            throw new Error("Should not create");
+          },
+          listIssueComments: async () => [
+            {
+              authorLogin: "hackathon-testing-agent[bot]",
+              body: rendered.body,
+              commentId: 7003,
+              htmlUrl: "https://github.com/acme/repo/issues/123#issuecomment-7003",
+            },
+          ],
+          updateIssueComment: async () => {
+            updateCalled = true;
+            throw new Error("Should not update");
+          },
+        },
+        loadPullRequestReviewContext: async () => featureReviewContextFixture,
+      },
+    );
+
+    expect(updateCalled).toBe(false);
+    expect(result.writeback).toEqual({
+      commentId: 7003,
+      errorMessage: null,
+      renderedBody: rendered.body,
+      status: "unchanged",
+    });
+  });
+
+  test("handles partial GitHub API failures cleanly", async () => {
+    const result = await runGitHubTestingAgentWorkflow(
+      {
+        event: createNormalizedEvent(),
+        mode: "live",
+      },
+      {
+        isConfigured: true,
+        issueCommentClient: {
+          createIssueComment: async () => {
+            throw new Error("GitHub create failed (502)");
+          },
+          listIssueComments: async () => [],
+          updateIssueComment: async () => {
+            throw new Error("Should not update");
+          },
+        },
+        loadPullRequestReviewContext: async () => featureReviewContextFixture,
+      },
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.writeback.status).toBe("failed");
+    expect(result.writeback.errorMessage).toBe("GitHub create failed (502)");
+    expect(result.message).toContain(
+      "Issue comment writeback failed: GitHub create failed (502)",
+    );
   });
 });

@@ -116,6 +116,12 @@ describe("server github webhook intake", () => {
           context: null,
           message: "accepted for test",
           sourcePrNumber: event.pullRequest.number,
+          writeback: {
+            commentId: null,
+            errorMessage: null,
+            renderedBody: null,
+            status: "not_needed",
+          },
         };
       },
     });
@@ -169,6 +175,79 @@ describe("server github webhook intake", () => {
         message: "accepted for test",
         sourcePrNumber: 42,
       },
+    });
+  });
+
+  test("wires the testing issue comment client into the workflow in live mode", async () => {
+    const body = JSON.stringify(payload);
+    const testingIssueCommentClient = {
+      createIssueComment: async () => {
+        throw new Error("not used in this test");
+      },
+      listIssueComments: async () => [],
+      updateIssueComment: async () => {
+        throw new Error("not used in this test");
+      },
+    };
+    let receivedDependencies: unknown = null;
+
+    const app = createApp(
+      {
+        ...createTestEnv(),
+        GITHUB_APP_ID: "123",
+        GITHUB_APP_PRIVATE_KEY: "private-key",
+        GITHUB_TESTING_AGENT_MODE: "live" as const,
+      },
+      {
+        runGitHubTestingAgentWorkflow: async (_input, workflowDependencies) => {
+          receivedDependencies = workflowDependencies;
+
+          return {
+            accepted: true,
+            analysis: {
+              blastRadius: [],
+              changedFilesConsidered: [],
+              confidence: "medium",
+              implementationGaps: [],
+              oversights: [],
+              rationale: "accepted for test",
+              shouldComment: false,
+              source: "heuristic",
+              summary: "accepted for test",
+              testingNotes: [],
+              wasModelSkipped: true,
+            },
+            code: "accepted",
+            context: null,
+            message: "accepted for test",
+            sourcePrNumber: payload.pull_request.number,
+            writeback: {
+              commentId: null,
+              errorMessage: null,
+              renderedBody: null,
+              status: "not_needed",
+            },
+          };
+        },
+        testingIssueCommentClient,
+      },
+    );
+
+    const response = await app.request("/webhooks/github", {
+      body,
+      headers: {
+        "content-type": "application/json",
+        "x-github-delivery": "delivery-testing-writeback",
+        "x-github-event": "pull_request",
+        "x-hub-signature-256": signWebhook(body, webhookSecret),
+      },
+      method: "POST",
+    });
+
+    expect(response.status).toBe(202);
+    expect(receivedDependencies).toMatchObject({
+      issueCommentClient: testingIssueCommentClient,
+      isConfigured: true,
     });
   });
 });

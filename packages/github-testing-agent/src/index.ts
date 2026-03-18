@@ -15,7 +15,13 @@ export {
 } from "./context";
 export {
   createGitHubAppPullRequestReviewContextLoader,
+  createGitHubAppIssueCommentWritebackClient,
 } from "./github-app";
+export {
+  createIssueFeedbackCommentMarker,
+  findMatchingIssueFeedbackComment,
+  renderIssueFeedbackComment,
+} from "./issue-comment";
 export {
   normalizeGitHubTestingWebhookEvent,
   readGitHubWebhookHeaders,
@@ -32,6 +38,10 @@ export type {
   GitHubWebhookNormalizationResult,
   GitHubWebhookSignatureVerificationResult,
   IssueContext,
+  IssueCommentWritebackClient,
+  IssueFeedbackCommentRenderResult,
+  IssueFeedbackCommentRenderer,
+  IssueFeedbackCommentRendererInput,
   NormalizedTestingPullRequestWebhookEvent,
   PullRequestDiffSnippet,
   PullRequestReviewAnalysis,

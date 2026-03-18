@@ -1,7 +1,6 @@
 import type {
   ExistingIssueFeedbackComment,
   IssueFeedbackCommentRenderer,
-  PullRequestReviewAnalysis,
 } from "./types";
 
 const DEFAULT_AGENT_IDENTITY = "github-testing-agent";
@@ -49,8 +48,7 @@ export function findMatchingIssueFeedbackComment(params: {
     if (
       comment.body.includes(marker) ||
       comment.body.includes(legacyMarkerByNumber) ||
-      comment.body.includes(legacyMarkerByUrl) ||
-      comment.body.includes(params.sourcePrUrl)
+      comment.body.includes(legacyMarkerByUrl)
     ) {
       return comment;
     }
