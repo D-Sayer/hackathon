@@ -10,7 +10,11 @@ import {
 } from "@hackathon/ui/components/card";
 import { CalendarDays, Check, ChevronRight, Star } from "lucide-react";
 
-import { DemoFrame, PropsTable, TwoColumnTable } from "@/components/docs/shared";
+import {
+  DemoFrame,
+  PropsTable,
+  TwoColumnTable,
+} from "@/components/docs/shared";
 
 function CardStructureDemo() {
   return (
@@ -19,7 +23,7 @@ function CardStructureDemo() {
       description="The recommended composition uses header, content, and optional footer slots."
       className="items-stretch"
     >
-      <Card className="max-w-md">
+      <Card className="w-md">
         <CardHeader>
           <CardTitle>Quarterly rollout</CardTitle>
           <CardDescription>
@@ -43,7 +47,9 @@ function CardStructureDemo() {
           </div>
         </CardContent>
         <CardFooter className="justify-between">
-          <span className="text-xs text-muted-foreground">Updated 2 hours ago</span>
+          <span className="text-xs text-muted-foreground">
+            Updated 2 hours ago
+          </span>
           <Button size="sm">Open plan</Button>
         </CardFooter>
       </Card>
@@ -58,19 +64,23 @@ function CardSizeDemo() {
       description="The small size compresses spacing while keeping the same composition model."
       className="items-stretch"
     >
-      <Card className="max-w-sm">
+      <Card className="max-w-md">
         <CardHeader>
           <CardTitle>Default card</CardTitle>
-          <CardDescription>Best for richer content and multi-line descriptions.</CardDescription>
+          <CardDescription>
+            Best for richer content and multi-line descriptions.
+          </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           A comfortable default for dashboards, lists, and editorial surfaces.
         </CardContent>
       </Card>
-      <Card size="sm" className="max-w-sm">
+      <Card size="sm" className="max-w-md">
         <CardHeader>
           <CardTitle>Small card</CardTitle>
-          <CardDescription>Designed for tighter list and utility layouts.</CardDescription>
+          <CardDescription>
+            Designed for tighter list and utility layouts.
+          </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           Use when density matters more than spacious presentation.
@@ -87,10 +97,12 @@ function CardActionDemo() {
       description="`CardAction` aligns utility controls without affecting title and description flow."
       className="items-stretch"
     >
-      <Card className="max-w-md">
+      <Card className="max-w-lg">
         <CardHeader>
           <CardTitle>New contributors</CardTitle>
-          <CardDescription>Review pending onboarding tasks before granting access.</CardDescription>
+          <CardDescription>
+            Review pending onboarding tasks before granting access.
+          </CardDescription>
           <CardAction>
             <Button size="sm" variant="outline">
               Review
@@ -99,7 +111,10 @@ function CardActionDemo() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm text-muted-foreground">
-            <p>Three people need workspace access and one still needs legal approval.</p>
+            <p>
+              Three people need workspace access and one still needs legal
+              approval.
+            </p>
             <div className="flex items-center gap-2 text-foreground">
               <Star className="size-4" />
               Priority queue active
@@ -118,16 +133,18 @@ function CardMediaDemo() {
       description="Cards can include top media, then transition into content and persistent footer actions."
       className="items-stretch"
     >
-      <Card className="max-w-md">
+      <Card className="max-w-lg">
         <div className="h-40 w-full bg-[linear-gradient(135deg,rgba(0,0,0,0.92),rgba(0,0,0,0.6)),radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_40%)]" />
         <CardHeader>
           <CardTitle>Release notes</CardTitle>
           <CardDescription>
-            Summaries, changelogs, and launch-ready assets in a single container.
+            Summaries, changelogs, and launch-ready assets in a single
+            container.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          Combine a visual lead-in with supporting content when you need editorial emphasis.
+          Combine a visual lead-in with supporting content when you need
+          editorial emphasis.
         </CardContent>
         <CardFooter className="justify-between">
           <Button size="sm" variant="ghost">
@@ -158,7 +175,8 @@ function CardApiTable() {
           prop: "className",
           type: "string",
           defaultValue: "-",
-          description: "Merged onto the root card container for layout or presentation changes.",
+          description:
+            "Merged onto the root card container for layout or presentation changes.",
         },
         {
           prop: "...props",
@@ -177,12 +195,24 @@ function CardSlotsTable() {
       leftLabel="Slot"
       rightLabel="Purpose"
       rows={[
-        ["CardHeader", "Introduces the card and sets up title, description, and optional actions."],
+        [
+          "CardHeader",
+          "Introduces the card and sets up title, description, and optional actions.",
+        ],
         ["CardTitle", "Primary heading for the card."],
         ["CardDescription", "Secondary supporting text under the title."],
-        ["CardAction", "Right-aligned utility or contextual action area inside the header."],
-        ["CardContent", "Main body content for text, lists, forms, or embedded layouts."],
-        ["CardFooter", "Persistent bottom row for actions, status, or summary metadata."],
+        [
+          "CardAction",
+          "Right-aligned utility or contextual action area inside the header.",
+        ],
+        [
+          "CardContent",
+          "Main body content for text, lists, forms, or embedded layouts.",
+        ],
+        [
+          "CardFooter",
+          "Persistent bottom row for actions, status, or summary metadata.",
+        ],
       ]}
     />
   );

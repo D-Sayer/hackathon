@@ -21,33 +21,51 @@ function DemoFrame({
   className?: string;
 }) {
   return (
-    <div className="my-6 overflow-hidden border border-border bg-card text-card-foreground">
-      <div className="border-b border-border bg-muted/40 px-4 py-3">
+    <div className="my-6 overflow-hidden border border-border text-card-foreground rounded-md">
+      <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-medium">{title}</p>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        ) : null}
       </div>
-      <div className={cn("flex flex-wrap items-center gap-3 px-4 py-5", className)}>{children}</div>
+      <div
+        className={cn("flex flex-wrap items-center gap-3 px-4 py-5", className)}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
 function PropsTable({ rows }: { rows: PropRow[] }) {
   return (
-    <div className="my-6 overflow-x-auto border border-border">
-      <table className="w-full border-collapse text-sm">
+    <div className="my-6 overflow-x-auto">
+      <table className="w-full text-sm">
         <thead className="bg-muted/40 text-left">
           <tr>
-            <th className="border-b border-border px-4 py-3 font-medium">Prop</th>
-            <th className="border-b border-border px-4 py-3 font-medium">Type</th>
-            <th className="border-b border-border px-4 py-3 font-medium">Default</th>
-            <th className="border-b border-border px-4 py-3 font-medium">Description</th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              Prop
+            </th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              Type
+            </th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              Default
+            </th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              Description
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.prop} className="align-top">
-              <td className="border-b border-border px-4 py-3 font-mono text-xs">{row.prop}</td>
-              <td className="border-b border-border px-4 py-3 font-mono text-xs">{row.type}</td>
+              <td className="border-b border-border px-4 py-3 font-mono text-xs">
+                {row.prop}
+              </td>
+              <td className="border-b border-border px-4 py-3 font-mono text-xs">
+                {row.type}
+              </td>
               <td className="border-b border-border px-4 py-3 font-mono text-xs">
                 {row.defaultValue ?? "-"}
               </td>
@@ -72,19 +90,27 @@ function TwoColumnTable({
   rows: Array<[string, string]>;
 }) {
   return (
-    <div className="my-6 overflow-x-auto border border-border">
-      <table className="w-full border-collapse text-sm">
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
         <thead className="bg-muted/40 text-left">
           <tr>
-            <th className="border-b border-border px-4 py-3 font-medium">{leftLabel}</th>
-            <th className="border-b border-border px-4 py-3 font-medium">{rightLabel}</th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              {leftLabel}
+            </th>
+            <th className="border-b border-border px-4 py-3 font-medium">
+              {rightLabel}
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map(([left, right]) => (
             <tr key={left}>
-              <td className="border-b border-border px-4 py-3 font-mono text-xs">{left}</td>
-              <td className="border-b border-border px-4 py-3 text-muted-foreground">{right}</td>
+              <td className="border-b border-border px-4 py-3 font-mono text-xs">
+                {left}
+              </td>
+              <td className="border-b border-border px-4 py-3 text-muted-foreground">
+                {right}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -93,20 +119,16 @@ function TwoColumnTable({
   );
 }
 
-function Guidance({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function Guidance({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="my-6 border border-border bg-muted/30 px-4 py-4">
       <div className="flex items-center gap-2">
         <Info className="size-4 text-muted-foreground" />
         <p className="text-sm font-medium">{title}</p>
       </div>
-      <div className="mt-2 text-sm leading-6 text-muted-foreground">{children}</div>
+      <div className="mt-2 text-sm leading-6 text-muted-foreground">
+        {children}
+      </div>
     </div>
   );
 }
@@ -146,12 +168,16 @@ function LinkCard({
       href={href}
       className="group block border border-border bg-card p-5 text-card-foreground transition-colors hover:bg-muted/30"
     >
-      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</p>
+      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+        {eyebrow}
+      </p>
       <div className="mt-3 flex items-center justify-between gap-4">
         <p className="text-lg font-medium">{title}</p>
         <ExternalLink className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
       </div>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        {description}
+      </p>
     </a>
   );
 }

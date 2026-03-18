@@ -67,7 +67,9 @@ function sanitizeTargetPath(rawPath: string, fallbackSegment: string): string {
     .filter(Boolean);
 
   const sanitizedSegments =
-    segments.length > 0 ? segments : [slugifySegment(fallbackSegment) || "update"];
+    segments.length > 0
+      ? segments
+      : [slugifySegment(fallbackSegment) || "update"];
 
   return `${sanitizedSegments.join("/")}.mdx`;
 }
@@ -83,7 +85,9 @@ function ensureSupportedDocPath(docPath: string): string {
     normalized.includes("..\\") ||
     /^[a-z]:/i.test(normalized)
   ) {
-    throw new Error(`Generated doc path is outside the allowed docs root: ${docPath}`);
+    throw new Error(
+      `Generated doc path is outside the allowed docs root: ${docPath}`,
+    );
   }
 
   if (!normalized.endsWith(".mdx")) {
@@ -138,7 +142,10 @@ function buildFallbackTargetPage(params: {
     params.classification.proposedChanges[0] ??
     params.event.pullRequest.title;
 
-  return sanitizeTargetPath(preferredSource, `pr-${params.event.pullRequest.number}`);
+  return sanitizeTargetPath(
+    preferredSource,
+    `pr-${params.event.pullRequest.number}`,
+  );
 }
 
 function resolveDocsPageTargets(params: {
@@ -159,7 +166,10 @@ function resolveDocsPageTargets(params: {
   const requestedTargets =
     params.classification.targetPages.length > 0
       ? params.classification.targetPages.map((targetPage) =>
-          sanitizeTargetPath(targetPage, `pr-${params.event.pullRequest.number}`),
+          sanitizeTargetPath(
+            targetPage,
+            `pr-${params.event.pullRequest.number}`,
+          ),
         )
       : [buildFallbackTargetPage(params)];
 
@@ -171,13 +181,16 @@ function resolveDocsPageTargets(params: {
     const candidatePages = pathLookupKeys(normalizedTarget).flatMap(
       (lookupKey) => existingByKey.get(lookupKey) ?? [],
     );
-    const uniqueCandidatePages = [...new Map(candidatePages.map((page) => [page.path, page])).values()];
+    const uniqueCandidatePages = [
+      ...new Map(candidatePages.map((page) => [page.path, page])).values(),
+    ];
     const exactMatch = params.docsPages.find(
       (page) => trimDocRootPrefix(page.path) === normalizedTarget,
     );
 
     const matchedPage =
-      exactMatch ?? (uniqueCandidatePages.length === 1 ? uniqueCandidatePages[0] : null);
+      exactMatch ??
+      (uniqueCandidatePages.length === 1 ? uniqueCandidatePages[0] : null);
     const targetPath = matchedPage
       ? ensureSupportedDocPath(trimDocRootPrefix(matchedPage.path))
       : normalizedTarget;
@@ -200,7 +213,9 @@ function resolveDocsPageTargets(params: {
     });
   }
 
-  return resolvedTargets.sort((left, right) => left.path.localeCompare(right.path));
+  return resolvedTargets.sort((left, right) =>
+    left.path.localeCompare(right.path),
+  );
 }
 
 function collectDiffSnippets(
@@ -219,7 +234,10 @@ function escapeYamlString(value: string): string {
   return JSON.stringify(value.trim());
 }
 
-function renderFrontmatter(params: { description: string; title: string }): string {
+function renderFrontmatter(params: {
+  description: string;
+  title: string;
+}): string {
   return [
     "---",
     `title: ${escapeYamlString(params.title)}`,
@@ -258,7 +276,8 @@ function upsertGeneratedSection(params: {
   sectionBody: string;
 }): string {
   const normalizedBody = params.body.trim();
-  const nextSection = `${params.heading}\n\n${params.sectionBody.trim()}`.trim();
+  const nextSection =
+    `${params.heading}\n\n${params.sectionBody.trim()}`.trim();
   const pattern = new RegExp(
     `(^|\\n)${escapeRegExp(params.heading)}\\n[\\s\\S]*?(?=\\n## |\\n# |$)`,
     "m",
@@ -314,13 +333,17 @@ function validateRenderedMdxContent(params: {
   const match = normalized.match(/^---\n([\s\S]*?)\n---\n([\s\S]+)$/);
 
   if (!match) {
-    throw new Error(`Generated content for ${params.path} must include frontmatter and a body.`);
+    throw new Error(
+      `Generated content for ${params.path} must include frontmatter and a body.`,
+    );
   }
 
   const body = match[2]!.trim();
 
   if (body.length === 0) {
-    throw new Error(`Generated content for ${params.path} must include MDX body content.`);
+    throw new Error(
+      `Generated content for ${params.path} must include MDX body content.`,
+    );
   }
 }
 
@@ -342,13 +365,18 @@ function buildDefaultDraft(params: {
 }): GeneratedDocWriterDraft {
   const baseTitle =
     params.target.operation === "create"
-      ? humanizeSlug(pathWithoutExtension(params.target.path).split("/").at(-1) ?? "Update")
+      ? humanizeSlug(
+          pathWithoutExtension(params.target.path).split("/").at(-1) ??
+            "Update",
+        )
       : `PR #${params.event.pullRequest.number} Documentation Update`;
   const overview = params.classification.rationale.trim();
   const proposedChanges =
     params.classification.proposedChanges.length > 0
       ? params.classification.proposedChanges
-      : ["Review the source PR and document the user-facing impact in this page."];
+      : [
+          "Review the source PR and document the user-facing impact in this page.",
+        ];
   const changedFiles = params.context.changedFiles
     .slice(0, 5)
     .map((file) => `- \`${file.path}\``)
@@ -408,7 +436,10 @@ function formatChangedFilesForPrompt(
   return context.changedFiles.length === 0
     ? "- none"
     : context.changedFiles
-        .map((file) => `- ${file.path} (${file.changeType}, +${file.additions}/-${file.deletions})`)
+        .map(
+          (file) =>
+            `- ${file.path} (${file.changeType}, +${file.additions}/-${file.deletions})`,
+        )
         .join("\n");
 }
 
@@ -427,7 +458,9 @@ function formatDocsTargetsForPrompt(targets: DocsPageTarget[]): string {
     .join("\n\n");
 }
 
-function formatDiffSnippetsForPrompt(diffSnippets: PullRequestDiffSnippet[]): string {
+function formatDiffSnippetsForPrompt(
+  diffSnippets: PullRequestDiffSnippet[],
+): string {
   return diffSnippets.length === 0
     ? "No diff snippets were available."
     : diffSnippets
@@ -504,10 +537,15 @@ async function findDocsRootPath(params: {
     current = parent;
   }
 
-  throw new Error(`Unable to locate docs root "${params.docsWriteTarget}" from ${params.cwd}.`);
+  throw new Error(
+    `Unable to locate docs root "${params.docsWriteTarget}" from ${params.cwd}.`,
+  );
 }
 
-async function walkDocsPages(rootPath: string, currentPath = rootPath): Promise<RepositoryDocsPage[]> {
+async function walkDocsPages(
+  rootPath: string,
+  currentPath = rootPath,
+): Promise<RepositoryDocsPage[]> {
   const entries = await readdir(currentPath, {
     withFileTypes: true,
   });

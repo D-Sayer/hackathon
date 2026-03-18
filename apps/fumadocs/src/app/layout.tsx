@@ -1,4 +1,5 @@
 import { RootProvider } from "fumadocs-ui/provider/next";
+import "@fontsource-variable/figtree";
 
 import "./global.css";
 import { Inter } from "next/font/google";

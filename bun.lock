@@ -21,6 +21,7 @@
       "name": "fumadocs",
       "version": "0.0.0",
       "dependencies": {
+        "@hackathon/ui": "workspace:*",
         "@takumi-rs/image-response": "^0.72.0",
         "fumadocs-core": "16.6.17",
         "fumadocs-mdx": "14.2.10",
