@@ -1,11 +1,37 @@
 import { DOCS_WRITE_TARGET } from "./constants";
+import {
+  evaluatePullRequestHeuristics,
+} from "./classify-pr";
 import type {
   GitHubDocAgentWorkflowInput,
   GitHubDocAgentWorkflowResult,
+  PullRequestClassification,
+  PullRequestClassificationSource,
+  PullRequestClassifier,
+  PullRequestContextLoader,
 } from "./types";
 
 export interface GitHubDocAgentWorkflowDependencies {
   isConfigured?: boolean;
+  classifier?: PullRequestClassifier;
+  loadPullRequestContext?: PullRequestContextLoader;
+}
+
+function buildWorkflowMessage(params: {
+  classification: PullRequestClassification;
+  mode: "dry-run" | "live";
+  source: PullRequestClassificationSource;
+}): string {
+  const prefix =
+    params.mode === "live"
+      ? "PR classified for docs automation."
+      : "PR classified in dry-run mode for docs automation.";
+
+  const decision = params.classification.needsDocs
+    ? "Documentation updates are required."
+    : "No documentation updates are required.";
+
+  return `${prefix} ${decision} Decision source: ${params.source}.`;
 }
 
 export async function runGitHubDocAgentWorkflow(
@@ -18,6 +44,16 @@ export async function runGitHubDocAgentWorkflow(
     return {
       accepted: false,
       code: "workflow_not_configured",
+      classification: {
+        changedFilesConsidered: [],
+        needsDocs: false,
+        proposedChanges: [],
+        rationale:
+          "The workflow is not configured, so pull request classification did not run.",
+        source: "fallback",
+        targetPages: [],
+        wasModelSkipped: true,
+      },
       docsWriteTarget: DOCS_WRITE_TARGET,
       message:
         "The docs agent architecture is wired, but GitHub integration is not configured yet.",
@@ -25,14 +61,80 @@ export async function runGitHubDocAgentWorkflow(
     };
   }
 
+  if (!dependencies.loadPullRequestContext) {
+    return {
+      accepted: false,
+      code: "workflow_not_configured",
+      classification: {
+        changedFilesConsidered: [],
+        needsDocs: false,
+        proposedChanges: [],
+        rationale:
+          "The workflow cannot classify this pull request because no PR context loader is configured.",
+        source: "fallback",
+        targetPages: [],
+        wasModelSkipped: true,
+      },
+      docsWriteTarget: DOCS_WRITE_TARGET,
+      message:
+        "The docs agent workflow needs a PR context loader before classification can run.",
+      sourcePrNumber: input.event.pullRequest.number,
+    };
+  }
+
+  const context = await dependencies.loadPullRequestContext(input.event);
+  const heuristicEvaluation = evaluatePullRequestHeuristics(context);
+
+  let classification: PullRequestClassification;
+  let source: PullRequestClassificationSource = heuristicEvaluation.source;
+  let wasModelSkipped = heuristicEvaluation.shouldSkipModel;
+
+  if (heuristicEvaluation.shouldSkipModel && heuristicEvaluation.decision) {
+    classification = heuristicEvaluation.decision;
+  } else if (dependencies.classifier) {
+    classification = await dependencies.classifier({
+      context,
+      diffSnippets: heuristicEvaluation.diffSnippets,
+      filteredChangedFiles: heuristicEvaluation.filteredChangedFiles,
+    });
+    source = "model";
+    wasModelSkipped = false;
+  } else {
+    classification = {
+      needsDocs: true,
+      proposedChanges: [
+        "Review the impacted behavior and capture the user-facing or setup change in Fumadocs.",
+      ],
+      rationale:
+        "Positive docs-impact signals were found, but no AI classifier is configured. Falling back to a conservative docs-needed decision.",
+      targetPages: [],
+    };
+    source = "fallback";
+    wasModelSkipped = true;
+  }
+
+  const code =
+    mode === "live"
+      ? classification.needsDocs
+        ? "classified_needs_docs"
+        : "classified_no_docs"
+      : "dry_run";
+
   return {
     accepted: true,
-    code: mode === "live" ? "accepted" : "dry_run",
+    code,
+    classification: {
+      ...classification,
+      changedFilesConsidered: heuristicEvaluation.changedFilesConsidered,
+      source,
+      wasModelSkipped,
+    },
     docsWriteTarget: DOCS_WRITE_TARGET,
-    message:
-      mode === "live"
-        ? "Webhook accepted by the docs agent workflow skeleton."
-        : "Webhook accepted in dry-run mode by the docs agent workflow skeleton.",
+    message: buildWorkflowMessage({
+      classification,
+      mode,
+      source,
+    }),
     sourcePrNumber: input.event.pullRequest.number,
   };
 }

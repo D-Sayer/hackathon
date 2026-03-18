@@ -4,6 +4,10 @@ export {
   SUPPORTED_PULL_REQUEST_ACTIONS,
 } from "./constants";
 export {
+  createAiPullRequestClassifier,
+  evaluatePullRequestHeuristics,
+} from "./classify-pr";
+export {
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
   verifyGitHubWebhookSignature,
@@ -16,4 +20,13 @@ export type {
   GitHubWebhookNormalizationResult,
   GitHubWebhookSignatureVerificationResult,
   NormalizedPullRequestWebhookEvent,
+  PullRequestChangedFile,
+  PullRequestClassification,
+  PullRequestClassificationContext,
+  PullRequestClassificationSource,
+  PullRequestClassifier,
+  PullRequestClassifierInput,
+  PullRequestContextLoader,
+  PullRequestDiffSnippet,
+  PullRequestHeuristicEvaluation,
 } from "./types";

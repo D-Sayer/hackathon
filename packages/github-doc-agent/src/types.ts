@@ -78,14 +78,77 @@ export interface GitHubDocAgentWorkflowInput {
   mode?: "dry-run" | "live";
 }
 
+export interface PullRequestChangedFile {
+  additions: number;
+  changeType: "added" | "modified" | "removed" | "renamed";
+  deletions: number;
+  path: string;
+  patch?: string;
+  previousPath?: string | null;
+}
+
+export interface PullRequestClassificationContext {
+  body: string;
+  changedFiles: PullRequestChangedFile[];
+  labels: string[];
+  title: string;
+}
+
+export interface PullRequestDiffSnippet {
+  path: string;
+  snippet: string;
+}
+
+export interface PullRequestClassification {
+  needsDocs: boolean;
+  proposedChanges: string[];
+  rationale: string;
+  targetPages: string[];
+}
+
+export type PullRequestClassificationSource =
+  | "heuristic"
+  | "model"
+  | "fallback";
+
+export interface PullRequestHeuristicEvaluation {
+  changedFilesConsidered: string[];
+  decision?: PullRequestClassification;
+  diffSnippets: PullRequestDiffSnippet[];
+  filteredChangedFiles: string[];
+  shouldSkipModel: boolean;
+  source: "heuristic";
+}
+
+export interface PullRequestClassifierInput {
+  context: PullRequestClassificationContext;
+  diffSnippets: PullRequestDiffSnippet[];
+  filteredChangedFiles: string[];
+}
+
+export type PullRequestClassifier = (
+  input: PullRequestClassifierInput,
+) => Promise<PullRequestClassification>;
+
+export type PullRequestContextLoader = (
+  event: NormalizedPullRequestWebhookEvent,
+) => Promise<PullRequestClassificationContext>;
+
 export interface GitHubDocAgentWorkflowResult {
   accepted: boolean;
   code:
     | "accepted"
+    | "classified_needs_docs"
+    | "classified_no_docs"
     | "dry_run"
     | "workflow_not_configured"
     | "unsupported_action"
     | "unsupported_event";
+  classification: PullRequestClassification & {
+    changedFilesConsidered: string[];
+    source: PullRequestClassificationSource;
+    wasModelSkipped: boolean;
+  };
   docsWriteTarget: DocsWriteTarget;
   message: string;
   sourcePrNumber: number;

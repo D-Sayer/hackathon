@@ -3,12 +3,20 @@ import { describe, expect, test } from "bun:test";
 
 import {
   DOCS_WRITE_TARGET,
+  evaluatePullRequestHeuristics,
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
   runGitHubDocAgentWorkflow,
   verifyGitHubWebhookSignature,
 } from "./index";
 import { pullRequestOpenedPayload } from "./__fixtures__/pull-request-opened";
+import {
+  apiChangeClassificationFixture,
+  configChangeClassificationFixture,
+  docsOnlyClassificationFixture,
+  internalRefactorClassificationFixture,
+  webFeatureClassificationFixture,
+} from "./__fixtures__/pr-classification";
 
 const payload = pullRequestOpenedPayload;
 const payloadText = JSON.stringify(payload);
@@ -164,11 +172,192 @@ describe("github doc agent workflow", () => {
 
     const result = await runGitHubDocAgentWorkflow({
       event: normalized.event,
+      mode: "dry-run",
     });
+
+    expect(result.accepted).toBe(false);
+    expect(result.code).toBe("workflow_not_configured");
+    expect(result.docsWriteTarget).toBe(DOCS_WRITE_TARGET);
+    expect(result.sourcePrNumber).toBe(42);
+  });
+
+  test("skips the model for docs-only pull requests", () => {
+    const result = evaluatePullRequestHeuristics(docsOnlyClassificationFixture);
+
+    expect(result.shouldSkipModel).toBe(true);
+    expect(result.decision).toEqual({
+      needsDocs: false,
+      proposedChanges: [],
+      rationale:
+        "The PR only changes documentation pages or markdown content, so it should not open a separate docs PR.",
+      targetPages: [],
+    });
+  });
+
+  test("skips the model for internal refactors with no docs impact", () => {
+    const result = evaluatePullRequestHeuristics(
+      internalRefactorClassificationFixture,
+    );
+
+    expect(result.shouldSkipModel).toBe(true);
+    expect(result.decision).toEqual({
+      needsDocs: false,
+      proposedChanges: [],
+      rationale:
+        "The PR is explicitly described as an internal refactor with no behavior change, so it does not require documentation updates.",
+      targetPages: [],
+    });
+  });
+
+  test("classifies a web feature change as docs-needed when the model runs", async () => {
+    const normalized = normalizeGitHubWebhookEvent({
+      headers: {
+        deliveryId: "delivery-feature",
+        eventName: "pull_request",
+        signature256: null,
+      },
+      payload,
+      receivedAt: new Date("2026-03-18T00:00:00.000Z"),
+    });
+
+    if (!normalized.ok) {
+      throw new Error("Expected webhook normalization to succeed.");
+    }
+
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event: normalized.event,
+        mode: "dry-run",
+      },
+      {
+        classifier: async () => ({
+          needsDocs: true,
+          proposedChanges: [
+            "Document the new dashboard filter workflow for web users.",
+          ],
+          rationale: "The PR adds a user-facing dashboard filtering feature.",
+          targetPages: ["dashboard"],
+        }),
+        loadPullRequestContext: async () => webFeatureClassificationFixture,
+      },
+    );
 
     expect(result.accepted).toBe(true);
     expect(result.code).toBe("dry_run");
-    expect(result.docsWriteTarget).toBe(DOCS_WRITE_TARGET);
-    expect(result.sourcePrNumber).toBe(42);
+    expect(result.classification.needsDocs).toBe(true);
+    expect(result.classification.source).toBe("model");
+    expect(result.classification.targetPages).toEqual(["dashboard"]);
+  });
+
+  test("classifies an API change as docs-needed when the model runs", async () => {
+    const normalized = normalizeGitHubWebhookEvent({
+      headers: {
+        deliveryId: "delivery-api",
+        eventName: "pull_request",
+        signature256: null,
+      },
+      payload,
+    });
+
+    if (!normalized.ok) {
+      throw new Error("Expected webhook normalization to succeed.");
+    }
+
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event: normalized.event,
+      },
+      {
+        classifier: async () => ({
+          needsDocs: true,
+          proposedChanges: ["Document the webhook replay API contract."],
+          rationale: "The PR changes server behavior and API surface area.",
+          targetPages: ["api/webhooks"],
+        }),
+        loadPullRequestContext: async () => apiChangeClassificationFixture,
+      },
+    );
+
+    expect(result.classification.needsDocs).toBe(true);
+    expect(result.classification.targetPages).toEqual(["api/webhooks"]);
+    expect(result.classification.source).toBe("model");
+  });
+
+  test("classifies a config/setup change as docs-needed when the model runs", async () => {
+    const normalized = normalizeGitHubWebhookEvent({
+      headers: {
+        deliveryId: "delivery-config",
+        eventName: "pull_request",
+        signature256: null,
+      },
+      payload,
+    });
+
+    if (!normalized.ok) {
+      throw new Error("Expected webhook normalization to succeed.");
+    }
+
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event: normalized.event,
+      },
+      {
+        classifier: async () => ({
+          needsDocs: true,
+          proposedChanges: [
+            "Add setup guidance for the docs agent environment variables.",
+          ],
+          rationale: "The PR adds configuration that operators need to set up.",
+          targetPages: ["setup/github-doc-agent"],
+        }),
+        loadPullRequestContext: async () => configChangeClassificationFixture,
+      },
+    );
+
+    expect(result.classification.needsDocs).toBe(true);
+    expect(result.classification.targetPages).toEqual([
+      "setup/github-doc-agent",
+    ]);
+  });
+
+  test("returns a no-docs classification without calling the model for docs-only changes", async () => {
+    const normalized = normalizeGitHubWebhookEvent({
+      headers: {
+        deliveryId: "delivery-docs-only",
+        eventName: "pull_request",
+        signature256: null,
+      },
+      payload,
+    });
+
+    if (!normalized.ok) {
+      throw new Error("Expected webhook normalization to succeed.");
+    }
+
+    let classifierCalled = false;
+
+    const result = await runGitHubDocAgentWorkflow(
+      {
+        event: normalized.event,
+      },
+      {
+        classifier: async () => {
+          classifierCalled = true;
+
+          return {
+            needsDocs: true,
+            proposedChanges: [],
+            rationale: "Should not be used.",
+            targetPages: [],
+          };
+        },
+        loadPullRequestContext: async () => docsOnlyClassificationFixture,
+      },
+    );
+
+    expect(classifierCalled).toBe(false);
+    expect(result.classification.needsDocs).toBe(false);
+    expect(result.classification.source).toBe("heuristic");
+    expect(result.classification.wasModelSkipped).toBe(true);
   });
 });
