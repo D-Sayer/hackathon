@@ -110,6 +110,11 @@ export interface ExistingIssueFeedbackComment {
   htmlUrl: string;
 }
 
+export interface IssueFeedbackCommentRenderResult {
+  body: string;
+  marker: string;
+}
+
 export interface PullRequestReviewContext {
   attachedIssue: IssueContext | null;
   attachedIssueReference: AttachedIssueReference | null;
@@ -160,6 +165,34 @@ export type PullRequestReviewContextLoader = (
   event: NormalizedTestingPullRequestWebhookEvent,
 ) => Promise<PullRequestReviewContext>;
 
+export interface IssueCommentWritebackClient {
+  createIssueComment: (input: {
+    body: string;
+    event: NormalizedTestingPullRequestWebhookEvent;
+    issueNumber: number;
+  }) => Promise<ExistingIssueFeedbackComment>;
+  listIssueComments: (input: {
+    event: NormalizedTestingPullRequestWebhookEvent;
+    issueNumber: number;
+  }) => Promise<ExistingIssueFeedbackComment[]>;
+  updateIssueComment: (input: {
+    body: string;
+    commentId: number;
+    event: NormalizedTestingPullRequestWebhookEvent;
+  }) => Promise<ExistingIssueFeedbackComment>;
+}
+
+export interface IssueFeedbackCommentRendererInput {
+  agentIdentity: string;
+  analysis: PullRequestReviewAnalysis;
+  attachedIssue: IssueContext;
+  sourcePullRequest: NormalizedTestingPullRequestWebhookEvent["pullRequest"];
+}
+
+export type IssueFeedbackCommentRenderer = (
+  input: IssueFeedbackCommentRendererInput,
+) => IssueFeedbackCommentRenderResult;
+
 export interface GitHubTestingAgentWorkflowResult {
   accepted: boolean;
   code: "accepted" | "dry_run" | "workflow_not_configured";
@@ -179,6 +212,19 @@ export interface GitHubTestingAgentWorkflowResult {
       };
   message: string;
   sourcePrNumber: number;
+  writeback: {
+    commentId: number | null;
+    errorMessage: string | null;
+    renderedBody: string | null;
+    status:
+      | "created"
+      | "dry_run"
+      | "failed"
+      | "not_needed"
+      | "skipped"
+      | "unchanged"
+      | "updated";
+  };
 }
 
 export interface GitHubTestingAgentWorkflowLogEntry {
@@ -194,4 +240,5 @@ export interface GitHubTestingAgentWorkflowLogEntry {
   mode: "dry-run" | "live";
   sourcePrNumber: number;
   wasModelSkipped: boolean;
+  writebackStatus: GitHubTestingAgentWorkflowResult["writeback"]["status"];
 }

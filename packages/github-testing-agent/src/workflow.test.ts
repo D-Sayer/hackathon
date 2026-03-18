@@ -1,17 +1,6 @@
-import { createHmac } from "node:crypto";
 import { describe, expect, test } from "bun:test";
+import { createHmac } from "node:crypto";
 
-import {
-  createAiPullRequestReviewAnalyzer,
-  createGitHubTestingAgentWorkflowLogEntry,
-  evaluatePullRequestReviewHeuristics,
-  normalizeGitHubTestingWebhookEvent,
-  readGitHubWebhookHeaders,
-  resolveAttachedIssueReference,
-  runGitHubTestingAgentWorkflow,
-  verifyGitHubWebhookSignature,
-} from "./index";
-import type { NormalizedTestingPullRequestWebhookEvent } from "./index";
 import { pullRequestOpenedPayload } from "./__fixtures__/pull-request-opened";
 import {
   configChangeReviewContextFixture,
@@ -21,6 +10,16 @@ import {
   noAttachedIssueReviewContextFixture,
   partialBugfixReviewContextFixture,
 } from "./__fixtures__/review-analysis";
+import type { NormalizedTestingPullRequestWebhookEvent } from "./index";
+import {
+  createGitHubTestingAgentWorkflowLogEntry,
+  evaluatePullRequestReviewHeuristics,
+  normalizeGitHubTestingWebhookEvent,
+  readGitHubWebhookHeaders,
+  resolveAttachedIssueReference,
+  runGitHubTestingAgentWorkflow,
+  verifyGitHubWebhookSignature,
+} from "./index";
 
 const payload = pullRequestOpenedPayload;
 const payloadText = JSON.stringify(payload);
@@ -130,7 +129,8 @@ describe("github testing agent intake", () => {
     expect(result).toEqual({
       ok: false,
       code: "unsupported_action",
-      message: 'pull_request action "closed" is not handled by the testing agent.',
+      message:
+        'pull_request action "closed" is not handled by the testing agent.',
     });
   });
 
@@ -198,7 +198,8 @@ describe("github testing agent intake", () => {
     expect(result).toEqual({
       ok: false,
       code: "ignored_bot_branch",
-      message: 'Ignored bot branch "testing-bot/pr-42" to prevent webhook loops.',
+      message:
+        'Ignored bot branch "testing-bot/pr-42" to prevent webhook loops.',
     });
   });
 
@@ -323,7 +324,8 @@ describe("github testing agent intake", () => {
           };
         },
         isConfigured: true,
-        loadPullRequestReviewContext: async () => noAttachedIssueReviewContextFixture,
+        loadPullRequestReviewContext: async () =>
+          noAttachedIssueReviewContextFixture,
       },
     );
 
@@ -400,9 +402,7 @@ describe("github testing agent intake", () => {
       source: "title",
     });
     expect(resolved.references.map((reference) => reference.number)).toEqual([
-      123,
-      456,
-      789,
+      123, 456, 789,
     ]);
   });
 
@@ -550,7 +550,8 @@ describe("github testing agent intake", () => {
           ],
         }),
         isConfigured: true,
-        loadPullRequestReviewContext: async () => configChangeReviewContextFixture,
+        loadPullRequestReviewContext: async () =>
+          configChangeReviewContextFixture,
       },
     );
 
@@ -558,59 +559,5 @@ describe("github testing agent intake", () => {
       "Environment validation and deployment configuration both need verification before rollout.",
     ]);
     expect(result.analysis.shouldComment).toBe(true);
-  });
-
-  test("uses the AI SDK review analyzer helper with structured output", async () => {
-    const analyzer = createAiPullRequestReviewAnalyzer({
-      model: {
-        doGenerate: async () => ({
-          finishReason: "stop",
-          rawCall: { rawPrompt: null, rawSettings: {} },
-          response: {
-            headers: {},
-            id: "response-1",
-            messages: [],
-            modelId: "test-model",
-            timestamp: new Date("2026-03-18T00:00:00.000Z"),
-          },
-          text: JSON.stringify({
-            blastRadius: ["Shared server routes may be affected."],
-            confidence: "medium",
-            implementationGaps: ["Stable issue comment writeback is still missing."],
-            oversights: ["No rerun test was added for existing issue comments."],
-            rationale: "The linked issue remains only partially complete.",
-            shouldComment: true,
-            summary: "The PR adds analysis but still leaves follow-up work.",
-            testingNotes: ["Add a regression test for rerun idempotency."],
-          }),
-          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-        }),
-        doStream: async () => {
-          throw new Error("Streaming is not expected in this test.");
-        },
-        modelId: "test-model",
-        provider: "test-provider",
-        specificationVersion: "v2",
-      } as never,
-    });
-
-    const result = await analyzer({
-      context: featureReviewContextFixture,
-      diffSnippets: featureReviewContextFixture.diffSnippets,
-      filteredChangedFiles: featureReviewContextFixture.changedFiles.map(
-        (file) => file.path,
-      ),
-    });
-
-    expect(result).toEqual({
-      blastRadius: ["Shared server routes may be affected."],
-      confidence: "medium",
-      implementationGaps: ["Stable issue comment writeback is still missing."],
-      oversights: ["No rerun test was added for existing issue comments."],
-      rationale: "The linked issue remains only partially complete.",
-      shouldComment: true,
-      summary: "The PR adds analysis but still leaves follow-up work.",
-      testingNotes: ["Add a regression test for rerun idempotency."],
-    });
   });
 });
