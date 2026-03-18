@@ -6,6 +6,7 @@ export {
 export {
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
+  verifyGitHubWebhookSignature,
 } from "./normalize-webhook";
 export { runGitHubDocAgentWorkflow } from "./workflow";
 export type {
@@ -13,5 +14,6 @@ export type {
   GitHubDocAgentWorkflowResult,
   GitHubWebhookHeaders,
   GitHubWebhookNormalizationResult,
+  GitHubWebhookSignatureVerificationResult,
   NormalizedPullRequestWebhookEvent,
 } from "./types";

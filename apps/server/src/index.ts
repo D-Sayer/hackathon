@@ -9,6 +9,7 @@ import {
   normalizeGitHubWebhookEvent,
   readGitHubWebhookHeaders,
   runGitHubDocAgentWorkflow,
+  verifyGitHubWebhookSignature,
 } from "@hackathon/github-doc-agent";
 import { trpcServer } from "@hono/trpc-server";
 import { streamText, convertToModelMessages, wrapLanguageModel } from "ai";
@@ -42,6 +43,10 @@ app.use(
 );
 
 app.get("/webhooks/github", (c) => {
+  return c.redirect("/webhooks/github/health", 307);
+});
+
+app.get("/webhooks/github/health", (c) => {
   return c.json({
     docsWriteTarget: DOCS_WRITE_TARGET,
     enabled: env.GITHUB_DOC_AGENT_ENABLED,
@@ -52,6 +57,25 @@ app.get("/webhooks/github", (c) => {
 
 app.post("/webhooks/github", async (c) => {
   const payloadText = await c.req.text();
+  const headers = readGitHubWebhookHeaders(c.req.raw.headers);
+
+  console.info("[github-webhook] intake", {
+    deliveryId: headers.deliveryId,
+    eventName: headers.eventName,
+  });
+
+  const signatureError = verifyGitHubWebhookSignature({
+    payloadText,
+    secret: env.GITHUB_WEBHOOK_SECRET,
+    signature256: headers.signature256,
+  });
+
+  if (signatureError) {
+    const status =
+      signatureError.code === "webhook_secret_not_configured" ? 503 : 401;
+
+    return c.json(signatureError, status);
+  }
 
   let payload: unknown;
 
@@ -68,7 +92,7 @@ app.post("/webhooks/github", async (c) => {
   }
 
   const normalization = normalizeGitHubWebhookEvent({
-    headers: readGitHubWebhookHeaders(c.req.raw.headers),
+    headers,
     payload,
   });
 
@@ -76,9 +100,7 @@ app.post("/webhooks/github", async (c) => {
     const status =
       normalization.code === "invalid_payload"
         ? 400
-        : normalization.code === "unsupported_event"
-          ? 202
-          : 202;
+        : 202;
 
     return c.json(normalization, status);
   }
