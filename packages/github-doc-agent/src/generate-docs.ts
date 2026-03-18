@@ -490,6 +490,9 @@ export function createAiPullRequestDocWriter(params: {
         "For create operations, return a full MDX body without frontmatter.",
         "For update operations, return only the section content to append under a stable PR heading.",
         "Write concrete, repo-specific documentation and avoid generic marketing language.",
+        "Use the existing button docs as the canonical example for tone, structure, and depth.",
+        "Follow the documentation pattern shown in apps/fumadocs/content/docs/button.mdx and the supporting demo component pattern shown in apps/fumadocs/src/components/docs/button-docs.tsx.",
+        "When documenting components, prefer the same style of authoring: practical overview, usage guidance, clear headings, API detail, and references to concrete demo/example components when appropriate.",
       ].join(" "),
       prompt: [
         `PR title: ${input.event.pullRequest.title}`,
@@ -502,6 +505,24 @@ export function createAiPullRequestDocWriter(params: {
         formatDiffSnippetsForPrompt(input.diffSnippets),
         "Resolved documentation targets:",
         formatDocsTargetsForPrompt(input.targets),
+        "Canonical documentation example (apps/fumadocs/content/docs/button.mdx):",
+        [
+          "Use this page as the baseline example for the generated doc's writing style and structure.",
+          "Expected patterns include:",
+          "- short introductory overview",
+          "- sections like when to use, sizes/states/variants/api/usage guidance where relevant",
+          "- concrete guidance instead of placeholder copy",
+          "- embedded demo components when the repo already exposes them",
+        ].join("\n"),
+        "Canonical demo component example (apps/fumadocs/src/components/docs/button-docs.tsx):",
+        [
+          "Use this file as the baseline example for how supporting docs demo components are organized.",
+          "Expected patterns include:",
+          "- small focused demo components",
+          "- descriptive DemoFrame titles and descriptions",
+          "- an exported API table component when relevant",
+          "- examples grounded in the real component API",
+        ].join("\n"),
       ].join("\n\n"),
     });
 
