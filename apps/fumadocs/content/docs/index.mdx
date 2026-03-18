@@ -1,13 +1,31 @@
 ---
-title: Hello World
-description: Your first document
+title: Overview
+description: Shared documentation for the core Hackathon UI building blocks.
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+# Hackathon UI
 
-## What is Next?
+Hackathon UI documents the shared components used across this workspace. This site intentionally starts narrow: it covers the interaction control we use most often and the surface container that organizes most product layouts.
 
-<Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
-</Cards>
+## What lives here
+
+- `Button` defines emphasis, intent, and action hierarchy.
+- `Card` groups related content into flexible, composable containers.
+
+<Guidance title="Scope">
+  These docs are intentionally limited to Button and Card. The goal is depth and implementation clarity, not a broad catalog of unfinished components.
+</Guidance>
+
+## Principles
+
+- Use the shared package as the source of truth rather than duplicating ad hoc component recipes in apps.
+- Prefer a small number of clear variants over one-off custom styling in product code.
+- Document composition patterns, not just prop names, so contributors can build consistent screens faster.
+
+## Components
+
+<ComponentGrid />
+
+## Working Agreement
+
+Treat these pages as the implementation reference for design-system usage in this monorepo. If the shipped component API changes, the examples and guidance here should change in the same pull request.
